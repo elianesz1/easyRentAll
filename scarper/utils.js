@@ -101,12 +101,18 @@ async function cleanPostHandle(post) {
         el.querySelectorAll('[role="link"]').forEach(link => link.remove());
     });
 
-    // שליפה מחדש של הטקסט אחרי הניקוי
+    // שליפה מח
+    // דש של הטקסט אחרי הניקוי
     const cleanText = await post.innerText();
     return cleanText;
 }
 
-const groupUrl = 'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL';
+const groupUrls = ['https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL',
+    'https://www.facebook.com/groups/305724686290054','https://www.facebook.com/groups/295395253832427','https://www.facebook.com/groups/184920528370332','https://www.facebook.com/groups/563881507140230'
+    
+];
+
+const groupUrl = 'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL'
 
 module.exports = {
     randomWait,
@@ -115,5 +121,5 @@ module.exports = {
     loadPostIdInfo,
     savePostIdInfo,
     cleanPostHandle,
-    groupUrl
+    groupUrls
 }

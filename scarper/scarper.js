@@ -122,7 +122,6 @@ const MAX_POSTS_PER_RUN = 1;
         }
     }
 
-    console.log(`סיים לקחת 5 פוסטים!!!!`);
     // עכשיו מריצים את convert_posts.py
     exec('python ../Backend/convert_posts.py', (error, stdout, stderr) => {
         if (error) {
