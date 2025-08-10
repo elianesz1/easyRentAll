@@ -3,6 +3,8 @@ const fs = require("fs");
 const axios = require("axios");
 const path = require("path");
 const { db, bucket, uuidv4 } = require("./firebase");
+const { exec } = require("child_process");
+
 
 function loadPostIdInfo() {
     const filePath = "last_id.json";
@@ -107,6 +109,24 @@ async function cleanPostHandle(post) {
     return cleanText;
 }
 
+function runConvertPosts() {
+  // בונים נתיב כזה שיתאים מכל תיקייה שממנה מריצים את Node
+  const scriptPath = path.join(__dirname, "..", "Backend", "convert_posts.py");
+  const pythonCmd = process.env.PYTHON || "python";
+  const cmd = `${pythonCmd} "${scriptPath}"`;
+
+  exec(cmd, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
+      return;
+    }
+    if (stderr && stderr.trim()) {
+      console.error(`שגיאת פלט: ${stderr}`);
+    }
+    console.log(`פלט הסקריפט:\n${stdout}`);
+  });
+}
+
 const groupUrls = ['https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL',
     'https://www.facebook.com/groups/305724686290054','https://www.facebook.com/groups/295395253832427','https://www.facebook.com/groups/184920528370332','https://www.facebook.com/groups/563881507140230'
     
@@ -114,11 +134,12 @@ const groupUrls = ['https://www.facebook.com/groups/287564448778602/?hoisted_sec
 
 const groupUrl = 'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL'
 
-// module.exports = {
-//     uploadImageToFirebase,
-//     processPost,
-//     loadPostIdInfo,
-//     savePostIdInfo,
-//     cleanPostHandle,
-//     groupUrl
-// }
+module.exports = {
+    uploadImageToFirebase,
+    processPost,
+    loadPostIdInfo,
+    savePostIdInfo,
+    cleanPostHandle,
+    runConvertPosts,
+    groupUrl
+};

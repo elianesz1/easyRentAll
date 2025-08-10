@@ -1,10 +1,10 @@
 const { randomWait, cleanPostHandle, processPost } = require("./utils");
-const { MAX_POSTS_PER_RUN } = require("./config");
+// const { MAX_POSTS_PER_RUN } = require("./config");
+// import { randomWait, cleanPostHandle, processPost } from "./utils.js";
 
-const INTERVAL_MINUTES = 20;
 const MAX_POSTS_PER_RUN = 5;
 
-export async function scrapePosts(page) {
+async function scrapePosts(page) {
     let processedCount = 0;
 
     while (processedCount < MAX_POSTS_PER_RUN) {
@@ -82,9 +82,9 @@ export async function scrapePosts(page) {
             console.log("טקסט הפוסט:");
             console.log(text);
             console.log("\n תמונות:");
-            console.log(allImages);
+            console.log(galleryImages);
 
-            await processPost(text, allImages);
+            await processPost(text, galleryImages);
             processedCount++;
             if (processedCount >= MAX_POSTS_PER_RUN) break;
 
@@ -181,3 +181,5 @@ async function scrollNextPost(page) {
     });
     await page.waitForTimeout(2000);
 }
+
+module.exports = { scrapePosts };
