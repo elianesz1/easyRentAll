@@ -9,7 +9,7 @@ function loadPostIdInfo() {
     const todayStr = format(new Date(), "ddMMyyyy");
 
     if (!fs.existsSync(filePath)) {
-        return { date: todayStr, counter: 1 };
+        return { date: todayStr, counter: 1 }; 
     }
 
     const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -114,12 +114,11 @@ const groupUrls = ['https://www.facebook.com/groups/287564448778602/?hoisted_sec
 
 const groupUrl = 'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL'
 
-module.exports = {
-    randomWait,
-    uploadImageToFirebase,
-    processPost,
-    loadPostIdInfo,
-    savePostIdInfo,
-    cleanPostHandle,
-    groupUrls
-}
+// module.exports = {
+//     uploadImageToFirebase,
+//     processPost,
+//     loadPostIdInfo,
+//     savePostIdInfo,
+//     cleanPostHandle,
+//     groupUrl
+// }
