@@ -7,6 +7,9 @@ import re
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import hashlib
+
+print("🔁 Running NEW version of convert_posts.py")
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -58,7 +61,24 @@ def clean_post_text(raw_text):
 
     return raw_text.strip() # Return the cleaned post
 
-    
+def generate_fingerprint(data):
+    components = []
+
+    if data.get("address"):
+        components.append(f"address={data['address'].strip().lower()}")
+    if data.get("rooms"):
+        components.append(f"rooms={data['rooms']}")
+    if data.get("price"):
+        components.append(f"price={data['price']}")
+    if data.get("available_from"):
+        components.append(f"available_from={data['available_from']}")
+
+    if not components:
+        return None
+
+    fingerprint_key = "|".join(components)
+    return hashlib.md5(fingerprint_key.encode('utf-8')).hexdigest()
+
 default_structure = {
     "title": "דירה למכירה",
     "description": "",
@@ -77,43 +97,51 @@ default_structure = {
     "has_elevator": None,
     "available_from": None,
     "facebook_url": None,
-    "features": []
 }
 
 # === Safe JSON parse ===
+#אולי צריך למחוק אותה נבדוק על פוסטים חדשים (מחקנו את השורה שהשתמשה בפונצקיה הזו)
 def parse_gpt_output_safe(raw_text):
     try:
         print("RAW BEFORE PARSE:", repr(raw_text))
 
-         # Fix common bad characters from GPT output   
-        raw_text = raw_text.replace("“", '"').replace("”", '"').replace("’", "'").replace("`", "'")
-        # Remove invisible control characters like newline (\n), tab (\t), etc.
-        # These characters are not allowed in clean JSON and may cause errors
+        # Step 1: Replace smart quotes and invisible characters
+        raw_text = raw_text.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'").replace("`", "'")
+        raw_text = re.sub(r'[\u200e\u200f\u202a\u202c\u202d\u202e\u2066\u2067\u2068\u2069]', '', raw_text)
         raw_text = re.sub(r'[\x00-\x1F]+', '', raw_text)
-        # Remove invisible "Right-to-Left" mark (\u200f)
-        # This character controls text direction (used in Hebrew/Arabic)
-        raw_text = raw_text.replace('\u200f', '')
-        # Fix broken quote symbols
-        raw_text = raw_text.replace('\"', '"')
+
+        # Step 2: Fix common escape sequence issues
         raw_text = raw_text.replace('\\"', '"')
         raw_text = raw_text.replace('\\\"', '"')
         raw_text = raw_text.replace('\\\\', '\\')
 
-         # Fix prices like: 'ש\"ח' --> remove it
+        # Step 3: Remove escaped currency symbols like "ש\"ח"
         raw_text = re.sub(r':\s*".*?ש\\\"ח"', lambda m: m.group(0).replace('ש\\"ח', ''), raw_text)
 
-        # If the JSON is missing the last }, add it
+        # Step 4: Remove double quotes inside string values to avoid breaking the JSON
+        raw_text = re.sub(
+            r'(":[\s]*")([^"]*?)"([^"]*?)"([^"]*?)(")',
+            lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}{m.group(4)}{m.group(5)}',
+            raw_text
+        )
+
+        # Step 5: Add closing brace if missing
         if raw_text.count("{") > raw_text.count("}"):
             raw_text += "}"
 
-        # Try to convert the text into a Python dictionary (parse the JSON)
+        # Final attempt to parse the cleaned string as JSON
         return json.loads(raw_text)
 
     except Exception as e:
-        print(f"Cleaned JSON still failed: {e}")
+        print(f"❌ Cleaned JSON still failed: {e}")
+        try:
+            # Try to show where the parsing failed
+            error_index = int(str(e).split("char")[1].strip().strip(")"))
+            print("Offending character:", repr(raw_text[error_index-20:error_index+20]))
+        except Exception:
+            print("Couldn't extract error location.")
         return None
-
-    
+ 
 # Function to extract apartment data from a Facebook post
 # This function uses OpenAI's GPT-4o-mini model to analyze the post text and extract relevant information
 def extract_apartment_data(post_text):
@@ -155,8 +183,7 @@ For apartment listings, provide this JSON structure:
   "has_parking": <boolean or null>,
   "has_elevator": <boolean or null>,
   "available_from": "<YYYY-MM-DD with current year {current_year}>",
-  "facebook_url": "<facebook URL or null>",
-  "features": [<English terms: balcony, parking, elevator, etc>]
+  "facebook_url": "<facebook URL or null>"
 }}
 
 If the post is a short comment, question, or response without any clear apartment details (e.g., "כמה?", "אשמח לפרטים", "אפשר מחיר?", "נשמע טוב", "שיתוף") — then DO NOT attempt to extract fake apartment data.
@@ -256,7 +283,8 @@ TEXT TO ANALYZE:
         print(result_text)
 
         # Try to clean and convert the result from text into a Python dictionary
-        parsed_data = parse_gpt_output_safe(result_text)
+        parsed_data = json.loads(result_text)
+
         if parsed_data is None:
             print(f"JSON parsing failed:\n{result_text[:500]}")
             return None # Stop if the result is not valid
@@ -382,6 +410,34 @@ for doc in new_posts:
         data["id"] = post_id # Add the post ID
         data["images"] = post.get("images", []) # Add the list of images (if any)
         data["description"] = clean_post_text(post_text) # Clean and add the description
+
+        # יצירת fingerprint לפי שדות קיימים
+        fingerprint = generate_fingerprint(data)
+
+        if not fingerprint:
+            print(f"✗ Could not generate fingerprint for post {post_id} – skipping.")
+            posts_ref.document(post_id).update({"status": "incomplete"})
+            continue
+
+        # בדיקת כפילות
+        existing = db.collection("apartments").where("fingerprint", "==", fingerprint).get()
+        if existing:
+            print(f"✗ Duplicate apartment (fingerprint match) – skipping.")
+            posts_ref.document(post_id).update({"status": "duplicate"})
+            continue
+
+        # הוספת fingerprint לשמירה
+        data["fingerprint"] = fingerprint
+
+        # Check if all important fields are present
+        # We need at least price, address, and rooms to consider it a valid apartment post
+        important_fields = ["address", "rooms", "price"]
+        filled_fields = [f for f in important_fields if data.get(f)]
+
+        if len(filled_fields) == 0:
+            print(f"✗ Skipping post {post_id} – no important fields present.")
+            posts_ref.document(post_id).update({"status": "incomplete"})  # סטטוס חדש אם תרצי לעבור עליהם בעתיד
+            continue
 
         # Save the full apartment data to the "apartments" collection
         db.collection("apartments").document(post_id).set(data)
