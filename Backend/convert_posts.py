@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import hashlib
+import unicodedata
 
 print("🔁 Running NEW version of convert_posts.py")
 
@@ -98,49 +99,57 @@ default_structure = {
     "available_from": None,
     "facebook_url": None,
     "category": None,
+    "rental_scope": None,
     }
 
 # === Safe JSON parse ===
 #אולי צריך למחוק אותה נבדוק על פוסטים חדשים (מחקנו את השורה שהשתמשה בפונצקיה הזו)
-def parse_gpt_output_safe(raw_text):
+def parse_gpt_output_safe(raw_text: str):
+    # 1) Unicode normalization (removes odd combinations/compatibility forms)
+    cleaned = unicodedata.normalize("NFC", raw_text)
+
+    # 2) Convert smart quotes to standard ASCII quotes/apostrophes.
+    #    This ensures JSON uses plain `"` for keys/values delimiters.
+    cleaned = (cleaned
+        .replace("“", '"').replace("”", '"')
+        .replace("„", '"')
+        .replace("’", "'").replace("‘", "'")
+        .replace("`", "'")
+    )
+
+    # 2b) Replace problematic ASCII double-quote occurring *inside* Hebrew words
+    #     with Hebrew gershayim U+05F4. This keeps JSON valid and preserves meaning.
+    #     Pattern: a `"` that is between two Hebrew letters U+0590–U+05FF.
+    cleaned = re.sub(r'(?<=[\u0590-\u05FF])"(?=[\u0590-\u05FF])', '\u05F4', cleaned)
+
+    # 3) Strip common invisible characters that often sneak into LTR/RTL text
+    cleaned = cleaned.replace("\ufeff", "")   # BOM
+    cleaned = cleaned.replace("\u00a0", " ")  # NBSP -> regular space
+    # LRM/RLM/ZWJ/ZWNJ
+    for ch in ["\u200e", "\u200f", "\u200c", "\u200d"]:
+        cleaned = cleaned.replace(ch, "")
+    # Directional isolates/embeddings: LRE/RLE/PDF/LRO/RLO & LRI/RLI/FSI/PDI
+    cleaned = re.sub(r"[\u202a-\u202e\u2066-\u2069]", "", cleaned)
+
+    # 4) Try to parse as JSON
     try:
-        print("RAW BEFORE PARSE:", repr(raw_text))
-
-        # Step 1: Replace smart quotes and invisible characters
-        raw_text = raw_text.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'").replace("`", "'")
-        raw_text = re.sub(r'[\u200e\u200f\u202a\u202c\u202d\u202e\u2066\u2067\u2068\u2069]', '', raw_text)
-        raw_text = re.sub(r'[\x00-\x1F]+', '', raw_text)
-
-        # Step 2: Fix common escape sequence issues
-        raw_text = raw_text.replace('\\"', '"')
-        raw_text = raw_text.replace('\\\"', '"')
-        raw_text = raw_text.replace('\\\\', '\\')
-
-        # Step 3: Remove escaped currency symbols like "ש\"ח"
-        raw_text = re.sub(r':\s*".*?ש\\\"ח"', lambda m: m.group(0).replace('ש\\"ח', ''), raw_text)
-
-        # Step 4: Remove double quotes inside string values to avoid breaking the JSON
-        raw_text = re.sub(
-            r'(":[\s]*")([^"]*?)"([^"]*?)"([^"]*?)(")',
-            lambda m: f'{m.group(1)}{m.group(2)}{m.group(3)}{m.group(4)}{m.group(5)}',
-            raw_text
-        )
-
-        # Step 5: Add closing brace if missing
-        if raw_text.count("{") > raw_text.count("}"):
-            raw_text += "}"
-
-        # Final attempt to parse the cleaned string as JSON
-        return json.loads(raw_text)
-
+        return json.loads(cleaned)
     except Exception as e:
-        print(f"❌ Cleaned JSON still failed: {e}")
+        # Helpful diagnostics: show where parsing choked.
+        print(f"❌ JSON decode failed: {e}")
         try:
-            # Try to show where the parsing failed
-            error_index = int(str(e).split("char")[1].strip().strip(")"))
-            print("Offending character:", repr(raw_text[error_index-20:error_index+20]))
+            msg = str(e)
+            # Extract the character index (if provided by the exception message)
+            if "char" in msg:
+                idx = int(msg.split("char")[1].split(")")[0].strip())
+                start = max(0, idx - 60)
+                end = min(len(cleaned), idx + 60)
+                snippet = cleaned[start:end]
+                print("Around error (repr):", repr(snippet))
+                print("Code points:", [hex(ord(c)) for c in snippet])
         except Exception:
-            print("Couldn't extract error location.")
+            # Best-effort diagnostics only—ignore secondary errors
+            pass
         return None
  
 # Function to extract apartment data from a Facebook post
@@ -175,10 +184,21 @@ CATEGORY CLASSIFICATION (MANDATORY):
 - If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
 - If unclear, choose "שכירות" (NOT null).
 
+RENTAL SCOPE CLASSIFICATION (MANDATORY):
+- Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
+- Return a Hebrew value in "rental_scope" with EXACTLY one of:
+  - "דירה שלמה" → the entire unit is for rent/sale/sublet (e.g., "דירה שלמה", "דירת 3 חדרים להשכרה", "יחידה עצמאית", entire apartment).
+  - "שותף"     → looking for a roommate / room in shared apartment (e.g., "מחפשים שותף/ה", "חדר פנוי", "שכירות לחדר", "דירת שותפים", "Roommate", "Shared apartment").
+- Hints for "שותף": mentions of שותף/שותפה/שותפים, חדר פנוי, שכר דירה לחדר, כניסה לחדר, דירת שותפים, מחפשים לדירה קיימת.
+- Hints for "דירה שלמה": ניסוחים כלליים של דירה להשכרה/סאבלט/מכירה ללא בקשה מפורשת לשותף; יחידת דיור/סטודיו/דירת 2–4 חדרים; אין אזכור לחדר פנוי בדירת שותפים.
+- If "category" is "מכירה", set "rental_scope" to "דירה שלמה".
+- If unclear, prefer "דירה שלמה".
+
 For apartment listings, provide this JSON structure:
 {{
   "is_apartment": true,
   "category": "<שכירות|מכירה|סאבלט>",
+  "rental_scope": "<דירה שלמה|שותף>",
   "title": "<Hebrew title - first meaningful phrase>",
   "description": "<leave empty, we will fill it from the original post text>",
   "price": <number or null>,
@@ -195,7 +215,7 @@ For apartment listings, provide this JSON structure:
   "has_parking": <boolean or null>,
   "has_elevator": <boolean or null>,
   "available_from": "<YYYY-MM-DD with current year {current_year}>",
-  "facebook_url": "<facebook URL or null>"
+  "facebook_url": "<facebook URL or null>",
 }}
 
 If the post is a short comment, question, or response without any clear apartment details (e.g., "כמה?", "אשמח לפרטים", "אפשר מחיר?", "נשמע טוב", "שיתוף") — then DO NOT attempt to extract fake apartment data.
@@ -213,6 +233,10 @@ IMPORTANT FORMAT INSTRUCTIONS:
 - Avoid writing any content in the "description" field — we will fill it ourselves from the original post.
 - If a field contains currency symbols like "ש\"ח", "₪", or commas in numbers — remove them entirely.
 - Do not escape any characters. Return clean JSON with plain UTF-8 text.
++ Never use the ASCII double quote (") inside any string value. 
++ If the text would normally include quotes (e.g., Hebrew abbreviations like ממ״ד), use the Hebrew gershayim character U+05F4 (״) or a single quote (').
++ The JSON itself must remain valid (inner quotes must not break JSON).
+
 
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
 - Old North
@@ -294,11 +318,10 @@ TEXT TO ANALYZE:
         print(result_text)
 
         # Try to clean and convert the result from text into a Python dictionary
-        parsed_data = json.loads(result_text)
-
+        parsed_data = parse_gpt_output_safe(result_text)
         if parsed_data is None:
             print(f"JSON parsing failed:\n{result_text[:500]}")
-            return None # Stop if the result is not valid
+            return None
 
         # Start from an empty/default apartment structure
         full_data = default_structure.copy()
@@ -309,6 +332,10 @@ TEXT TO ANALYZE:
         # Ensure category default if missing (robustness)
         if full_data.get("is_apartment") and not full_data.get("category"):
             full_data["category"] = "שכירות"
+
+        if full_data.get("is_apartment") and not full_data.get("rental_scope"):
+            # If sale → whole apt; else default to whole apt unless clearly roommate
+            full_data["rental_scope"] = "דירה שלמה" if full_data.get("category") == "מכירה" else "דירה שלמה"
 
         # Check if the address includes the same name as the neighborhood (in Hebrew)
         # If yes – remove the address to avoid repeating it
@@ -368,7 +395,7 @@ TEXT TO ANALYZE:
 # === Main process: fetch, extract and upload ===
 # Get all posts from the "posts" collection where status is "new" or "error"
 posts_ref = db.collection("posts")
-new_posts = posts_ref.where("status", "in", ["new", "error"]).stream()
+new_posts = posts_ref.where(filter=firestore.FieldFilter("status", "in", ["new", "error"])).stream()
 
 # Counter to keep track of how many posts were saved
 processed = 0
