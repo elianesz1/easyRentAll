@@ -1,83 +1,97 @@
-import React, { useEffect, useState } from "react";
-import { collection, getDocs, updateDoc, arrayUnion, arrayRemove, doc } from "firebase/firestore";
-import { db, auth } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSearch } from "react-icons/fa";
 import Layout from "../components/Layout";
 import ApartmentCard from "../components/ApartmentCard";
+import useAuth from "../hooks/useAuth";
+import useApartments from "../hooks/useApartments";
+import useFavorites from "../hooks/useFavorites";
 
-//Default apartment picture
-const placeholderImages = [
-  "https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80",
+const SORTS = [
+  { value: "price-asc", label: "מחיר: מהנמוך לגבוה" },
+  { value: "price-desc", label: "מחיר: מהגבוה לנמוך" },
+  { value: "newest", label: "זמן פרסום: מהחדש לישן" },
+  { value: "oldest", label: "זמן פרסום: מהישן לחדש" },
 ];
 
+const ROOMS = [
+  { value: "", label: "הכל" },
+  { value: "2", label: "2 חדרים" },
+  { value: "3", label: "3 חדרים" },
+  { value: "4", label: "4 חדרים" },
+  { value: "5plus", label: "5+" },
+];
+
+function toNumber(n) {
+  const x = typeof n === "string" ? Number(n.replace(/[^\d.-]/g, "")) : Number(n);
+  return Number.isFinite(x) ? x : null;
+}
+
+function getDateValue(ap) {
+  const d =
+    ap.createdAt || ap.created_at ||
+    ap.postedAt  || ap.posted_at  ||
+    ap.scrapedAt || ap.scraped_at ||
+    ap.timestamp;
+
+  if (!d) return null;
+  if (typeof d?.toMillis === "function") return d.toMillis();
+  const dt = new Date(d).getTime();
+  return Number.isFinite(dt) ? dt : null;
+}
+
 const Home = () => {
-  const [apartments, setApartments] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [userId, setUserId] = useState(null);
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { apartments, loading: aptsLoading } = useApartments();
+  const { favorites, onToggleFavorite } = useFavorites(user);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUserId(user.uid);
-        const userDoc = await getDocs(collection(db, "users"));
-        const currentUser = userDoc.docs.find(doc => doc.id === user.uid);
-        if (currentUser) {
-          setFavorites(currentUser.data().favorites || []);
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  const [sortBy, setSortBy] = useState("newest");
+  const [roomsFilter, setRoomsFilter] = useState("");
 
-  useEffect(() => {
-  const fetchApartments = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "apartments"));  
-      const data = snapshot.docs.map((doc) => {
-        const apt = doc.data();
-        return {
-          id: doc.id,
-          title: apt.title || "",
-          description: apt.description || "",
-          price: apt.price,
-          rooms: apt.rooms,
-          size: apt.size,
-          images: apt.images && Array.isArray(apt.images) && apt.images.length > 0
-            ? apt.images : placeholderImages,
-        };
-      });
-      setApartments(data);
-    } catch (err) {
-      console.error("שגיאה בשליפת דירות:", err);
-    }
+  const loading = authLoading || aptsLoading;
+
+  const clearFilters = () => {
+    setSortBy("newest");
+    setRoomsFilter("");
   };
-  fetchApartments();
-}, []);
 
+  const filteredAndSortedApartments = useMemo(() => {
+    let arr = [...apartments];
 
-  const toggleFavorite = async (postId) => {
-    if (!userId) return;
-    const userRef = doc(db, "users", userId);
-    const isFavorite = favorites.includes(postId);
-    try {
-      await updateDoc(userRef, {
-        favorites: isFavorite ? arrayRemove(postId) : arrayUnion(postId),
+    // סינון חדרים
+    if (roomsFilter) {
+      arr = arr.filter((ap) => {
+        const r = toNumber(ap.rooms);
+        if (!r) return false;
+        if (roomsFilter === "5plus") return r >= 5;
+        return r === Number(roomsFilter);
       });
-      setFavorites((prev) =>
-        isFavorite ? prev.filter((id) => id !== postId) : [...prev, postId]
-      );
-    } catch (error) {
-      console.error("שגיאה בעדכון מועדפים:", error);
     }
-  };
+
+    // מיון
+    switch (sortBy) {
+      case "price-asc":
+        arr.sort((a, b) => (toNumber(a.price) ?? Infinity) - (toNumber(b.price) ?? Infinity));
+        break;
+      case "price-desc":
+        arr.sort((a, b) => (toNumber(b.price) ?? -Infinity) - (toNumber(a.price) ?? -Infinity));
+        break;
+      case "oldest":
+        arr.sort((a, b) => (getDateValue(a) ?? Infinity) - (getDateValue(b) ?? Infinity));
+        break;
+      case "newest":
+      default:
+        arr.sort((a, b) => (getDateValue(b) ?? -Infinity) - (getDateValue(a) ?? -Infinity));
+        break;
+    }
+
+    return arr;
+  }, [apartments, sortBy, roomsFilter]);
 
   return (
     <Layout>
       <div className="min-h-screen bg-white font-sans text-brandText">
-        {/* Search */}
         <section className="max-w-4xl mx-auto text-center my-16">
           <h2 className="text-5xl font-bold text-gray-900 mb-4 leading-tight">
             מצאו דירה להשכרה בתל אביב
@@ -89,25 +103,81 @@ const Home = () => {
             onClick={() => navigate("/search")}
             className="cursor-pointer bg-gray-100 hover:bg-gray-200 transition rounded-full shadow-md max-w-md mx-auto px-8 py-4 flex items-center justify-center"
           >
-            <span className="text-gray-700 font-medium ml-2">
-              חפש את הדירה שלך
-            </span>
+            <span className="text-gray-700 font-medium ml-2">חפש את הדירה שלך</span>
             <FaSearch className="text-gray-500" />
           </div>
         </section>
 
-        {/* The apartments */}
-        <section className="max-w-7xl mx-auto py-14 px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {apartments.map((apartment) => (
-              <ApartmentCard
-                key={apartment.id}
-                apartment={apartment}
-                isFavorite={favorites.includes(apartment.id)}
-                onToggleFavorite={toggleFavorite}
-              />
-            ))}
+        {/* מיון וסינון */}
+        <section className="max-w-7xl mx-auto px-4 -mt-6 mb-4">
+          <div className="flex items-center justify-start gap-3" dir="rtl">
+             {/* מיון */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="sort" className="text-sm text-gray-600">
+                מיין לפי:
+              </label>
+              <select
+                id="sort"
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:border-gray-400"
+              >
+                {SORTS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            {/* חדרים */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="rooms" className="text-sm text-gray-600">
+                מספר חדרים:
+              </label>
+              <select
+                id="rooms"
+                value={roomsFilter}
+                onChange={(e) => setRoomsFilter(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:border-gray-400"
+              >
+                {ROOMS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+           
+
+            {/* נקה הכל */}
+            <button
+              onClick={clearFilters}
+              className="rounded-full border border-red-300 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50 active:bg-red-100 transition"
+              title="נקה את כל הסינונים והחזר לברירת המחדל"
+            >
+              נקה הכל
+            </button>
           </div>
+        </section>
+
+        {/* תצוגת כל הדירות */}
+        <section className="max-w-7xl mx-auto py-10 px-4">
+          {loading ? (
+            <div className="py-16 text-center text-gray-500">טוען…</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {filteredAndSortedApartments.map((apartment) => (
+                <ApartmentCard
+                  key={apartment.id}
+                  apartment={apartment}
+                  isFavorite={favorites.includes(apartment.id)}
+                  onToggleFavorite={() => onToggleFavorite(apartment.id)}
+                />
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </Layout>

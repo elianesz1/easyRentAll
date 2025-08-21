@@ -1,77 +1,61 @@
-import React, { useEffect, useState } from "react";
-import { collection, getDocs, doc, getDoc, updateDoc, arrayRemove } from "firebase/firestore";
-import { auth, db } from "../firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
+
 import Layout from "../components/Layout";
 import ApartmentCard from "../components/ApartmentCard";
 
+import useAuth from "../hooks/useAuth";
+import useFavorites from "../hooks/useFavorites";
+import useApartments from "../hooks/useApartments";
+
 const FavoritesPage = () => {
-  const [favorites, setFavorites] = useState([]);
-  const [apartments, setApartments] = useState([]);
-  const [userId, setUserId] = useState(null);
+  const { user, loading: authLoading, isLoggedIn } = useAuth();
+  const { favorites, onToggleFavorite } = useFavorites(user);
+  const { apartments, loading: aptsLoading } = useApartments();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setUserId(user.uid);
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        const userData = userSnap.data();
-        if (userData?.favorites) {
-          setFavorites(userData.favorites);
-        }
-      }
-    });
-    return () => unsubscribe();
-  }, []);
+  const loading = authLoading || aptsLoading;
 
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (favorites.length === 0) {
-        setApartments([]);
-        return;
-      }
-
-      const snapshot = await getDocs(collection(db, "apartments"));
-      const allApts = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        images: doc.data().images || [],
-      }));
-      const filtered = allApts.filter(apt => favorites.includes(apt.id));
-      setApartments(filtered);
-    };
-
-    fetchFavorites();
-  }, [favorites]);
-
-  const toggleFavorite = async (postId) => {
-    if (!userId) return;
-    const userRef = doc(db, "users", userId);
-    try {
-      await updateDoc(userRef, {
-        favorites: arrayRemove(postId),
-      });
-      setFavorites(prev => prev.filter(id => id !== postId));
-    } catch (error) {
-      console.error("שגיאה בעדכון מועדפים:", error);
-    }
-  };
+  const favApartments = useMemo(
+    () => apartments.filter((ap) => favorites.includes(ap.id)),
+    [apartments, favorites]
+  );
 
   return (
     <Layout>
       <div className="max-w-6xl mx-auto py-8 px-4">
         <h2 className="text-2xl font-bold mb-6 text-right">❤️ דירות שאהבתי</h2>
-        {apartments.length === 0 ? (
-          <p className="text-center text-gray-600">לא סומנו דירות אהובות עדיין.</p>
-        ) : (
+
+        {/* אם המשתמש לא מחובר */}
+        {!loading && !isLoggedIn && (
+          <div className="py-16 text-center text-gray-600">
+            כדי לשמור ולראות דירות שאהבת צריך להתחבר.{" "}
+            <Link to="/login" className="text-indigo-600 hover:underline">
+              התחברות
+            </Link>
+          </div>
+        )}
+
+        {/* טעינה */}
+        {loading && (
+          <div className="py-16 text-center text-gray-500">טוען…</div>
+        )}
+
+        {/* מחובר ואין מועדפים */}
+        {!loading && isLoggedIn && favApartments.length === 0 && (
+          <div className="py-16 text-center text-gray-600">
+            לא סומנו דירות אהובות עדיין.{" "}
+          </div>
+        )}
+
+        {/* רשימת מועדפים */}
+        {!loading && isLoggedIn && favApartments.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {apartments.map((apartment) => (
+            {favApartments.map((apartment) => (
               <ApartmentCard
                 key={apartment.id}
                 apartment={apartment}
                 isFavorite={favorites.includes(apartment.id)}
-                onToggleFavorite={toggleFavorite}
+                onToggleFavorite={() => onToggleFavorite(apartment.id)}
               />
             ))}
           </div>
