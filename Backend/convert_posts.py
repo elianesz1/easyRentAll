@@ -97,7 +97,8 @@ default_structure = {
     "has_elevator": None,
     "available_from": None,
     "facebook_url": None,
-}
+    "category": None,
+    }
 
 # === Safe JSON parse ===
 #אולי צריך למחוק אותה נבדוק על פוסטים חדשים (מחקנו את השורה שהשתמשה בפונצקיה הזו)
@@ -164,9 +165,20 @@ CRITICAL INSTRUCTIONS:
 5. If a post contains text with apartment details and comments, focus ONLY on the apartment details.
 6. Notice that the parameters title, description, and address are in Hebrew.
 
+CATEGORY CLASSIFICATION (MANDATORY):
+- Return a Hebrew value in "category" with EXACTLY one of:
+  - "שכירות"  → regular rental (e.g., "להשכרה", monthly rent, deposit)
+  - "מכירה"   → for sale (e.g., "למכירה", asking price, deal/transaction)
+  - "סאבלט"   → sublet / temporary rental (e.g., "סאבלט", "השכרה זמנית", clear start/end dates for weeks/months)
+  - "החלפה"  → home exchange / swap (e.g., "דירה להחלפה", "החלפת דירה", "מחליפים דירה", "home exchange", "house swap")
+- Prefer "סאבלט" when the stay is clearly temporary even if "להשכרה" appears.
+- If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
+- If unclear, choose "שכירות" (NOT null).
+
 For apartment listings, provide this JSON structure:
 {{
   "is_apartment": true,
+  "category": "<שכירות|מכירה|סאבלט>",
   "title": "<Hebrew title - first meaningful phrase>",
   "description": "<leave empty, we will fill it from the original post text>",
   "price": <number or null>,
@@ -208,7 +220,6 @@ STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
 - Neve Tzedek
 - Florentin
 - Kerem HaTeimanim
-- Lev Tel Aviv
 - City Center
 - Ramat Aviv
 - Ramat Aviv Gimel
@@ -295,6 +306,10 @@ TEXT TO ANALYZE:
         # Add the data we got from GPT to the default structure
         full_data.update(parsed_data)
 
+        # Ensure category default if missing (robustness)
+        if full_data.get("is_apartment") and not full_data.get("category"):
+            full_data["category"] = "שכירות"
+
         # Check if the address includes the same name as the neighborhood (in Hebrew)
         # If yes – remove the address to avoid repeating it
         if full_data.get("address") and full_data.get("neighborhood"):
@@ -304,7 +319,6 @@ TEXT TO ANALYZE:
                 "Neve Tzedek": "נווה צדק",
                 "Florentin": "פלורנטין",
                 "Kerem HaTeimanim": "כרם התימנים",
-                "Lev Tel Aviv": "לב תל אביב",
                 "City Center": "לב תל אביב",
                 "Ramat Aviv": "רמת אביב",
                 "Ramat Aviv Gimel": "רמת אביב ג'",
@@ -402,6 +416,12 @@ for doc in new_posts:
             posts_ref.document(post_id).update({"status": "skipped"})
             continue
         
+       # If the category is "החלפה" (home exchange) – skip it
+        if data.get("category") == "החלפה":
+            print("✗ Home exchange (החלפה) — skipping.")
+            posts_ref.document(post_id).update({"status": "skipped_exchange"})
+            continue
+
          # Remove the "is_apartment" key before saving to database
         if "is_apartment" in data:
             del data["is_apartment"]
@@ -426,7 +446,7 @@ for doc in new_posts:
             posts_ref.document(post_id).update({"status": "duplicate"})
             continue
 
-        # הוספת fingerprint לשמירה
+        #  Add the fingerprint to the data
         data["fingerprint"] = fingerprint
 
         # Check if all important fields are present
