@@ -100,10 +100,10 @@ default_structure = {
     "facebook_url": None,
     "category": None,
     "rental_scope": None,
+    "phone_number": None ,
     }
 
 # === Safe JSON parse ===
-#אולי צריך למחוק אותה נבדוק על פוסטים חדשים (מחקנו את השורה שהשתמשה בפונצקיה הזו)
 def parse_gpt_output_safe(raw_text: str):
     # 1) Unicode normalization (removes odd combinations/compatibility forms)
     cleaned = unicodedata.normalize("NFC", raw_text)
@@ -194,10 +194,19 @@ RENTAL SCOPE CLASSIFICATION (MANDATORY):
 - If "category" is "מכירה", set "rental_scope" to "דירה שלמה".
 - If unclear, prefer "דירה שלמה".
 
+PHONE NUMBER EXTRACTION (MANDATORY):
+- Detect if the post text contains a phone number.
+- Accept Israeli formats (e.g., 050-1234567, 0521234567, 054 7654321).
+- Accept international formats with +972 as well (e.g., +972-50-1234567).
+- Normalize to digits only (e.g., "0521234567").
+- If multiple phone numbers appear, return the first one.
+- If none appear, set "phone_number" to null.
+
 For apartment listings, provide this JSON structure:
 {{
   "is_apartment": true,
   "category": "<שכירות|מכירה|סאבלט>",
+  "phone_number": "<digits only or null>",
   "rental_scope": "<דירה שלמה|שותף>",
   "title": "<Hebrew title - first meaningful phrase>",
   "description": "<leave empty, we will fill it from the original post text>",
@@ -332,6 +341,9 @@ TEXT TO ANALYZE:
         # Ensure category default if missing (robustness)
         if full_data.get("is_apartment") and not full_data.get("category"):
             full_data["category"] = "שכירות"
+
+        if full_data.get("is_apartment") and "phone_number" not in full_data:
+            full_data["phone_number"] = None
 
         if full_data.get("is_apartment") and not full_data.get("rental_scope"):
             # If sale → whole apt; else default to whole apt unless clearly roommate
