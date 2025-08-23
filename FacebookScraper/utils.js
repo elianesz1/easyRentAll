@@ -11,7 +11,7 @@ function loadPostIdInfo() {
     const todayStr = format(new Date(), "ddMMyyyy");
 
     if (!fs.existsSync(filePath)) {
-        return { date: todayStr, counter: 1 }; 
+        return { date: todayStr, counter: 1 };
     }
 
     const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -110,29 +110,38 @@ async function cleanPostHandle(post) {
 }
 
 function runConvertPosts() {
-  // בונים נתיב כזה שיתאים מכל תיקייה שממנה מריצים את Node
-  const scriptPath = path.join(__dirname, "..", "Backend", "convert_posts.py");
-  const pythonCmd = process.env.PYTHON || "python";
-  const cmd = `${pythonCmd} "${scriptPath}"`;
+    // בונים נתיב כזה שיתאים מכל תיקייה שממנה מריצים את Node
+    const scriptPath = path.join(__dirname, "..", "Backend", "convert_posts.py");
+    const pythonCmd = process.env.PYTHON || "python";
+    const cmd = `${pythonCmd} "${scriptPath}"`;
 
-  exec(cmd, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
-      return;
-    }
-    if (stderr && stderr.trim()) {
-      console.error(`שגיאת פלט: ${stderr}`);
-    }
-    console.log(`פלט הסקריפט:\n${stdout}`);
-  });
+    exec(cmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
+            return;
+        }
+        if (stderr && stderr.trim()) {
+            console.error(`שגיאת פלט: ${stderr}`);
+        }
+        console.log(`פלט הסקריפט:\n${stdout}`);
+    });
 }
 
-const groupUrls = ['https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL',
-    'https://www.facebook.com/groups/305724686290054','https://www.facebook.com/groups/295395253832427','https://www.facebook.com/groups/184920528370332','https://www.facebook.com/groups/563881507140230'
-    
+const groupUrls = [//'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL',
+    'https://www.facebook.com/groups/45245752193/?locale=he_IL',
+    'https://www.facebook.com/groups/295395253832427/?locale=he_IL'
+    // 'https://www.facebook.com/groups/305724686290054',
+    // 'https://www.facebook.com/groups/295395253832427',
+    // 'https://www.facebook.com/groups/184920528370332',
+    // 'https://www.facebook.com/groups/563881507140230'
 ];
 
-const groupUrl = 'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL'
+function getRandomGroupUrl() {
+    const i = Math.floor(Math.random() * groupUrls.length);
+    return groupUrls[i];
+}
+
+const groupUrll = 'https://www.facebook.com/groups/333022240594651?locale=he_IL'
 
 module.exports = {
     uploadImageToFirebase,
@@ -141,5 +150,7 @@ module.exports = {
     savePostIdInfo,
     cleanPostHandle,
     runConvertPosts,
-    groupUrl
+    getRandomGroupUrl,
+    randomWait,
+    groupUrll
 };

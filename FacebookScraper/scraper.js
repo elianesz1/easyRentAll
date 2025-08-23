@@ -1,5 +1,5 @@
 const { chromium } = require("playwright");
-const { groupUrl, runConvertPosts } = require("./utils");
+const { runConvertPosts, getRandomGroupUrl, groupUrll } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
 const INTERVAL_MINUTES = 20;
@@ -16,27 +16,16 @@ async function runJob() {
     });
 
     const page = await context.newPage();
+    // const groupUrl = getRandomGroupUrl();
+    const groupUrl = groupUrll;
+
     await page.goto('https://www.facebook.com/');
     await page.goto(groupUrl, { waitUntil: 'domcontentloaded' });
 
     await scrapePosts(page);
 
-    // עכשיו מריצים את convert_posts.py
     runConvertPosts();
-    // exec('python ../Backend/convert_posts.py', (error, stdout, stderr) => {
-    //     if (error) {
-    //         console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
-    //         return;
-    //     }
-    //     if (stderr) {
-    //         console.error(`שגיאת פלט: ${stderr}`);
-    //     }
-    //     console.log(`פלט הסקריפט:\n${stdout}`);
-    // });
 };
 
-// ריצה ראשונה מיד
 runJob();
-
-// ריצות נוספות כל 20 דקות
 setInterval(runJob, INTERVAL_MINUTES * 60 * 1000);
