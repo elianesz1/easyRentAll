@@ -7,6 +7,10 @@ import re
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import hashlib
+import unicodedata
+
+print("🔁 Running NEW version of convert_posts.py")
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
@@ -58,7 +62,24 @@ def clean_post_text(raw_text):
 
     return raw_text.strip() # Return the cleaned post
 
-    
+def generate_fingerprint(data):
+    components = []
+
+    if data.get("address"):
+        components.append(f"address={data['address'].strip().lower()}")
+    if data.get("rooms"):
+        components.append(f"rooms={data['rooms']}")
+    if data.get("price"):
+        components.append(f"price={data['price']}")
+    if data.get("available_from"):
+        components.append(f"available_from={data['available_from']}")
+
+    if not components:
+        return None
+
+    fingerprint_key = "|".join(components)
+    return hashlib.md5(fingerprint_key.encode('utf-8')).hexdigest()
+
 default_structure = {
     "title": "דירה למכירה",
     "description": "",
@@ -77,43 +98,60 @@ default_structure = {
     "has_elevator": None,
     "available_from": None,
     "facebook_url": None,
-    "features": []
-}
+    "category": None,
+    "rental_scope": None,
+    "phone_number": None ,
+    }
 
 # === Safe JSON parse ===
-def parse_gpt_output_safe(raw_text):
+def parse_gpt_output_safe(raw_text: str):
+    # 1) Unicode normalization (removes odd combinations/compatibility forms)
+    cleaned = unicodedata.normalize("NFC", raw_text)
+
+    # 2) Convert smart quotes to standard ASCII quotes/apostrophes.
+    #    This ensures JSON uses plain `"` for keys/values delimiters.
+    cleaned = (cleaned
+        .replace("“", '"').replace("”", '"')
+        .replace("„", '"')
+        .replace("’", "'").replace("‘", "'")
+        .replace("`", "'")
+    )
+
+    # 2b) Replace problematic ASCII double-quote occurring *inside* Hebrew words
+    #     with Hebrew gershayim U+05F4. This keeps JSON valid and preserves meaning.
+    #     Pattern: a `"` that is between two Hebrew letters U+0590–U+05FF.
+    cleaned = re.sub(r'(?<=[\u0590-\u05FF])"(?=[\u0590-\u05FF])', '\u05F4', cleaned)
+
+    # 3) Strip common invisible characters that often sneak into LTR/RTL text
+    cleaned = cleaned.replace("\ufeff", "")   # BOM
+    cleaned = cleaned.replace("\u00a0", " ")  # NBSP -> regular space
+    # LRM/RLM/ZWJ/ZWNJ
+    for ch in ["\u200e", "\u200f", "\u200c", "\u200d"]:
+        cleaned = cleaned.replace(ch, "")
+    # Directional isolates/embeddings: LRE/RLE/PDF/LRO/RLO & LRI/RLI/FSI/PDI
+    cleaned = re.sub(r"[\u202a-\u202e\u2066-\u2069]", "", cleaned)
+
+    # 4) Try to parse as JSON
     try:
-        print("RAW BEFORE PARSE:", repr(raw_text))
-
-         # Fix common bad characters from GPT output   
-        raw_text = raw_text.replace("“", '"').replace("”", '"').replace("’", "'").replace("`", "'")
-        # Remove invisible control characters like newline (\n), tab (\t), etc.
-        # These characters are not allowed in clean JSON and may cause errors
-        raw_text = re.sub(r'[\x00-\x1F]+', '', raw_text)
-        # Remove invisible "Right-to-Left" mark (\u200f)
-        # This character controls text direction (used in Hebrew/Arabic)
-        raw_text = raw_text.replace('\u200f', '')
-        # Fix broken quote symbols
-        raw_text = raw_text.replace('\"', '"')
-        raw_text = raw_text.replace('\\"', '"')
-        raw_text = raw_text.replace('\\\"', '"')
-        raw_text = raw_text.replace('\\\\', '\\')
-
-         # Fix prices like: 'ש\"ח' --> remove it
-        raw_text = re.sub(r':\s*".*?ש\\\"ח"', lambda m: m.group(0).replace('ש\\"ח', ''), raw_text)
-
-        # If the JSON is missing the last }, add it
-        if raw_text.count("{") > raw_text.count("}"):
-            raw_text += "}"
-
-        # Try to convert the text into a Python dictionary (parse the JSON)
-        return json.loads(raw_text)
-
+        return json.loads(cleaned)
     except Exception as e:
-        print(f"Cleaned JSON still failed: {e}")
+        # Helpful diagnostics: show where parsing choked.
+        print(f"❌ JSON decode failed: {e}")
+        try:
+            msg = str(e)
+            # Extract the character index (if provided by the exception message)
+            if "char" in msg:
+                idx = int(msg.split("char")[1].split(")")[0].strip())
+                start = max(0, idx - 60)
+                end = min(len(cleaned), idx + 60)
+                snippet = cleaned[start:end]
+                print("Around error (repr):", repr(snippet))
+                print("Code points:", [hex(ord(c)) for c in snippet])
+        except Exception:
+            # Best-effort diagnostics only—ignore secondary errors
+            pass
         return None
-
-    
+ 
 # Function to extract apartment data from a Facebook post
 # This function uses OpenAI's GPT-4o-mini model to analyze the post text and extract relevant information
 def extract_apartment_data(post_text):
@@ -136,9 +174,40 @@ CRITICAL INSTRUCTIONS:
 5. If a post contains text with apartment details and comments, focus ONLY on the apartment details.
 6. Notice that the parameters title, description, and address are in Hebrew.
 
+CATEGORY CLASSIFICATION (MANDATORY):
+- Return a Hebrew value in "category" with EXACTLY one of:
+  - "שכירות"  → regular rental (e.g., "להשכרה", monthly rent, deposit)
+  - "מכירה"   → for sale (e.g., "למכירה", asking price, deal/transaction)
+  - "סאבלט"   → sublet / temporary rental (e.g., "סאבלט", "השכרה זמנית", clear start/end dates for weeks/months)
+  - "החלפה"  → home exchange / swap (e.g., "דירה להחלפה", "החלפת דירה", "מחליפים דירה", "home exchange", "house swap")
+- Prefer "סאבלט" when the stay is clearly temporary even if "להשכרה" appears.
+- If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
+- If unclear, choose "שכירות" (NOT null).
+
+RENTAL SCOPE CLASSIFICATION (MANDATORY):
+- Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
+- Return a Hebrew value in "rental_scope" with EXACTLY one of:
+  - "דירה שלמה" → the entire unit is for rent/sale/sublet (e.g., "דירה שלמה", "דירת 3 חדרים להשכרה", "יחידה עצמאית", entire apartment).
+  - "שותף"     → looking for a roommate / room in shared apartment (e.g., "מחפשים שותף/ה", "חדר פנוי", "שכירות לחדר", "דירת שותפים", "Roommate", "Shared apartment").
+- Hints for "שותף": mentions of שותף/שותפה/שותפים, חדר פנוי, שכר דירה לחדר, כניסה לחדר, דירת שותפים, מחפשים לדירה קיימת.
+- Hints for "דירה שלמה": ניסוחים כלליים של דירה להשכרה/סאבלט/מכירה ללא בקשה מפורשת לשותף; יחידת דיור/סטודיו/דירת 2–4 חדרים; אין אזכור לחדר פנוי בדירת שותפים.
+- If "category" is "מכירה", set "rental_scope" to "דירה שלמה".
+- If unclear, prefer "דירה שלמה".
+
+PHONE NUMBER EXTRACTION (MANDATORY):
+- Detect if the post text contains a phone number.
+- Accept Israeli formats (e.g., 050-1234567, 0521234567, 054 7654321).
+- Accept international formats with +972 as well (e.g., +972-50-1234567).
+- Normalize to digits only (e.g., "0521234567").
+- If multiple phone numbers appear, return the first one.
+- If none appear, set "phone_number" to null.
+
 For apartment listings, provide this JSON structure:
 {{
   "is_apartment": true,
+  "category": "<שכירות|מכירה|סאבלט>",
+  "phone_number": "<digits only or null>",
+  "rental_scope": "<דירה שלמה|שותף>",
   "title": "<Hebrew title - first meaningful phrase>",
   "description": "<leave empty, we will fill it from the original post text>",
   "price": <number or null>,
@@ -156,7 +225,6 @@ For apartment listings, provide this JSON structure:
   "has_elevator": <boolean or null>,
   "available_from": "<YYYY-MM-DD with current year {current_year}>",
   "facebook_url": "<facebook URL or null>",
-  "features": [<English terms: balcony, parking, elevator, etc>]
 }}
 
 If the post is a short comment, question, or response without any clear apartment details (e.g., "כמה?", "אשמח לפרטים", "אפשר מחיר?", "נשמע טוב", "שיתוף") — then DO NOT attempt to extract fake apartment data.
@@ -174,6 +242,10 @@ IMPORTANT FORMAT INSTRUCTIONS:
 - Avoid writing any content in the "description" field — we will fill it ourselves from the original post.
 - If a field contains currency symbols like "ש\"ח", "₪", or commas in numbers — remove them entirely.
 - Do not escape any characters. Return clean JSON with plain UTF-8 text.
++ Never use the ASCII double quote (") inside any string value. 
++ If the text would normally include quotes (e.g., Hebrew abbreviations like ממ״ד), use the Hebrew gershayim character U+05F4 (״) or a single quote (').
++ The JSON itself must remain valid (inner quotes must not break JSON).
+
 
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
 - Old North
@@ -181,7 +253,6 @@ STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
 - Neve Tzedek
 - Florentin
 - Kerem HaTeimanim
-- Lev Tel Aviv
 - City Center
 - Ramat Aviv
 - Ramat Aviv Gimel
@@ -259,13 +330,24 @@ TEXT TO ANALYZE:
         parsed_data = parse_gpt_output_safe(result_text)
         if parsed_data is None:
             print(f"JSON parsing failed:\n{result_text[:500]}")
-            return None # Stop if the result is not valid
+            return None
 
         # Start from an empty/default apartment structure
         full_data = default_structure.copy()
 
         # Add the data we got from GPT to the default structure
         full_data.update(parsed_data)
+
+        # Ensure category default if missing (robustness)
+        if full_data.get("is_apartment") and not full_data.get("category"):
+            full_data["category"] = "שכירות"
+
+        if full_data.get("is_apartment") and "phone_number" not in full_data:
+            full_data["phone_number"] = None
+
+        if full_data.get("is_apartment") and not full_data.get("rental_scope"):
+            # If sale → whole apt; else default to whole apt unless clearly roommate
+            full_data["rental_scope"] = "דירה שלמה" if full_data.get("category") == "מכירה" else "דירה שלמה"
 
         # Check if the address includes the same name as the neighborhood (in Hebrew)
         # If yes – remove the address to avoid repeating it
@@ -276,7 +358,6 @@ TEXT TO ANALYZE:
                 "Neve Tzedek": "נווה צדק",
                 "Florentin": "פלורנטין",
                 "Kerem HaTeimanim": "כרם התימנים",
-                "Lev Tel Aviv": "לב תל אביב",
                 "City Center": "לב תל אביב",
                 "Ramat Aviv": "רמת אביב",
                 "Ramat Aviv Gimel": "רמת אביב ג'",
@@ -326,7 +407,7 @@ TEXT TO ANALYZE:
 # === Main process: fetch, extract and upload ===
 # Get all posts from the "posts" collection where status is "new" or "error"
 posts_ref = db.collection("posts")
-new_posts = posts_ref.where("status", "in", ["new", "error"]).stream()
+new_posts = posts_ref.where(filter=firestore.FieldFilter("status", "in", ["new", "error"])).stream()
 
 # Counter to keep track of how many posts were saved
 processed = 0
@@ -374,6 +455,12 @@ for doc in new_posts:
             posts_ref.document(post_id).update({"status": "skipped"})
             continue
         
+       # If the category is "החלפה" (home exchange) – skip it
+        if data.get("category") == "החלפה":
+            print("✗ Home exchange (החלפה) — skipping.")
+            posts_ref.document(post_id).update({"status": "skipped_exchange"})
+            continue
+
          # Remove the "is_apartment" key before saving to database
         if "is_apartment" in data:
             del data["is_apartment"]
@@ -382,6 +469,34 @@ for doc in new_posts:
         data["id"] = post_id # Add the post ID
         data["images"] = post.get("images", []) # Add the list of images (if any)
         data["description"] = clean_post_text(post_text) # Clean and add the description
+
+        # יצירת fingerprint לפי שדות קיימים
+        fingerprint = generate_fingerprint(data)
+
+        if not fingerprint:
+            print(f"✗ Could not generate fingerprint for post {post_id} – skipping.")
+            posts_ref.document(post_id).update({"status": "incomplete"})
+            continue
+
+        # בדיקת כפילות
+        existing = db.collection("apartments").where("fingerprint", "==", fingerprint).get()
+        if existing:
+            print(f"✗ Duplicate apartment (fingerprint match) – skipping.")
+            posts_ref.document(post_id).update({"status": "duplicate"})
+            continue
+
+        #  Add the fingerprint to the data
+        data["fingerprint"] = fingerprint
+
+        # Check if all important fields are present
+        # We need at least price, address, and rooms to consider it a valid apartment post
+        important_fields = ["address", "rooms", "price"]
+        filled_fields = [f for f in important_fields if data.get(f)]
+
+        if len(filled_fields) == 0:
+            print(f"✗ Skipping post {post_id} – no important fields present.")
+            posts_ref.document(post_id).update({"status": "incomplete"})  # סטטוס חדש אם תרצי לעבור עליהם בעתיד
+            continue
 
         # Save the full apartment data to the "apartments" collection
         db.collection("apartments").document(post_id).set(data)
