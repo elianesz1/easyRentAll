@@ -16,8 +16,7 @@ async function runJob() {
     });
 
     const page = await context.newPage();
-    // const groupUrl = getRandomGroupUrl();
-    const groupUrl = groupUrll;
+    const groupUrl = getRandomGroupUrl();
 
     await page.goto('https://www.facebook.com/');
     await page.goto(groupUrl, { waitUntil: 'domcontentloaded' });

@@ -32,7 +32,7 @@ function savePostIdInfo(dateStr, counter) {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
 }
 
-async function processPost(text, allImages) {
+async function processPost(text, allImages, authorId, authorName) {
     const { date, counter } = loadPostIdInfo();
     const postId = `${date}_${String(counter).padStart(4, "0")}`;
     const imageUrls = [];
@@ -52,7 +52,9 @@ async function processPost(text, allImages) {
         text,
         images: imageUrls,
         created_at: new Date().toISOString(),
-        status: "new"
+        status: "new",
+        contactId: authorId,
+        contactName: authorName
     });
 
     console.log(`פוסט נשמר עם מזהה: ${postId}`);
@@ -127,14 +129,15 @@ function runConvertPosts() {
     });
 }
 
-const groupUrls = ['https://www.facebook.com/groups/333022240594651?locale=he_IL']
+const groupUrls = ['https://www.facebook.com/groups/333022240594651?locale=he_IL',
+    'https://www.facebook.com/groups/1485565508385836?locale=he_IL',
+    'https://www.facebook.com/groups/1749183625345821?locale=he_IL',
+    'https://www.facebook.com/groups/305906579600207?locale=he_IL']
 
 function getRandomGroupUrl() {
     const i = Math.floor(Math.random() * groupUrls.length);
     return groupUrls[i];
 }
-
-const groupUrll = 'https://www.facebook.com/groups/458499457501175?locale=he_IL'
 
 module.exports = {
     uploadImageToFirebase,
@@ -144,6 +147,5 @@ module.exports = {
     cleanPostHandle,
     runConvertPosts,
     getRandomGroupUrl,
-    randomWait,
-    groupUrll
+    randomWait
 };

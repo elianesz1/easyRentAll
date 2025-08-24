@@ -5,8 +5,6 @@ const MAX_POSTS_PER_RUN = 5;
 async function scrapePosts(page) {
     let processedCount = 0;
 
-    // await ensureMostRecentSorting(page);
-
     while (processedCount < MAX_POSTS_PER_RUN) {
         const posts = await page.$$('div[role=article]');
 
@@ -14,7 +12,9 @@ async function scrapePosts(page) {
 
             const galleryImages = await collectGalleryImages(page, post);
             await clickSeeMoreIfExists(page, post)
-            const userId = await getUserId(post)
+
+            const { authorId, authorName } = await getUserId(post); 
+            console.log('Author ID:', authorId, '| Name:', authorName);
 
             const text = await cleanPostHandle(post);
             if (!text) {
@@ -26,7 +26,7 @@ async function scrapePosts(page) {
             console.log("\n תמונות:");
             console.log(galleryImages);
 
-            await processPost(text, galleryImages);
+            await processPost(text, galleryImages, authorId, authorName);
             processedCount++;
             if (processedCount >= MAX_POSTS_PER_RUN) break;
         }
@@ -147,28 +147,28 @@ async function scrollUntilVisible(page, locator, {
     return await locator.isVisible();
 }
 
-async function ensureMostRecentSorting(page) {
-  await page.waitForSelector('div[role="feed"]', { timeout: 20000 });
+// async function ensureMostRecentSorting(page) {
+//     await page.waitForSelector('div[role="feed"]', { timeout: 20000 });
 
-  const sortButton = page.getByRole('button', {
-    // מכסה גם ממשק באנגלית
-    name: /הרלוונטיים ביותר|Most relevant|Recommended/i
-  });
+//     const sortButton = page.getByRole('button', {
+//         // מכסה גם ממשק באנגלית
+//         name: /הרלוונטיים ביותר|Most relevant|Recommended/i
+//     });
 
-  // לגלול עד שרואים את הכפתור
-  await scrollUntilVisible(page, sortButton);
+//     // לגלול עד שרואים את הכפתור
+//     await scrollUntilVisible(page, sortButton);
 
-  if (await sortButton.isVisible()) {
-    await sortButton.click();
-    const mostRecentItem = page.getByRole('menuitem', {
-      name: /חדשים|Most recent|Newest/i
-    });
-    if (await mostRecentItem.isVisible()) {
-      await mostRecentItem.click();
-      // לחכות ל"טלטול" הפיד
-      await page.waitForTimeout(1500);
-    }
-  }
-}
+//     if (await sortButton.isVisible()) {
+//         await sortButton.click();
+//         const mostRecentItem = page.getByRole('menuitem', {
+//             name: /חדשים|Most recent|Newest/i
+//         });
+//         if (await mostRecentItem.isVisible()) {
+//             await mostRecentItem.click();
+//             // לחכות ל"טלטול" הפיד
+//             await page.waitForTimeout(1500);
+//         }
+//     }
+// }
 
 module.exports = { scrapePosts };
