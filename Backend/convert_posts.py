@@ -9,15 +9,18 @@ import os
 from dotenv import load_dotenv
 import hashlib
 import unicodedata
+from pathlib import Path  
 
-print("🔁 Running NEW version of convert_posts.py")
+print("Running convert_posts.py")
 
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
-
+openai.api_key = api_key
 
 # === Firebase Initialization ===
-cred = credentials.Certificate("serviceAccountKey.json")
+BASE_DIR = Path(__file__).resolve().parent
+cred = credentials.Certificate(str(BASE_DIR / "serviceAccountKey.json")) 
+# cred = credentials.Certificate("serviceAccountKey.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 

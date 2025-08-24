@@ -127,21 +127,14 @@ function runConvertPosts() {
     });
 }
 
-const groupUrls = [//'https://www.facebook.com/groups/287564448778602/?hoisted_section_header_type=recently_seen&multi_permalinks=1869336167268081&locale=he_IL',
-    'https://www.facebook.com/groups/45245752193/?locale=he_IL',
-    'https://www.facebook.com/groups/295395253832427/?locale=he_IL'
-    // 'https://www.facebook.com/groups/305724686290054',
-    // 'https://www.facebook.com/groups/295395253832427',
-    // 'https://www.facebook.com/groups/184920528370332',
-    // 'https://www.facebook.com/groups/563881507140230'
-];
+const groupUrls = ['https://www.facebook.com/groups/333022240594651?locale=he_IL']
 
 function getRandomGroupUrl() {
     const i = Math.floor(Math.random() * groupUrls.length);
     return groupUrls[i];
 }
 
-const groupUrll = 'https://www.facebook.com/groups/333022240594651?locale=he_IL'
+const groupUrll = 'https://www.facebook.com/groups/458499457501175?locale=he_IL'
 
 module.exports = {
     uploadImageToFirebase,
