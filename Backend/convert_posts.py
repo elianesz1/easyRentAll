@@ -106,6 +106,49 @@ default_structure = {
     "phone_number": None ,
     }
 
+# --- neighborhoods mapping (single source of truth) ---
+NEIGHBORHOOD_EN_TO_HE = {
+    "Old North": "הצפון הישן",
+    "New North": "הצפון החדש",
+    "Neve Tzedek": "נווה צדק",
+    "Florentin": "פלורנטין",
+    "Kerem HaTeimanim": "כרם התימנים",
+    "Lev Tel Aviv": "לב תל אביב",
+    "City Center": "לב תל אביב",
+    "Ramat Aviv": "רמת אביב",
+    "Ramat Aviv Gimel": "רמת אביב ג'",
+    "Ramat HaHayal": "רמת החייל",
+    "Bavli": "בבלי",
+    "Yad Eliyahu": "יד אליהו",
+    "Neve Shaanan": "נווה שאנן",
+    "Shapira": "שפירא",
+    "Kfar Shalem": "כפר שלם",
+    "Hatikva": "התקווה",
+    "Bitzaron": "ביצרון",
+    "Montefiore": "מונטיפיורי",
+    "Ajami": "עג'מי",
+    "Jaffa D": "יפו ד'",
+    "Jaffa G": "יפו ג'",
+    "Old Jaffa": "יפו העתיקה",
+    "Neve Ofer": "נווה עופר",
+    "Tel Kabir": "תל כביר",
+    "Neve Avivim": "נווה אביבים",
+    "Givat Amal": "גבעת עמל",
+    "Hadar Yosef": "הדר יוסף",
+    "Neve Sharett": "נווה שרת",
+    "Tel Baruch": "תל ברוך",
+    "North Tel Baruch": "תל ברוך צפון",
+    "Ma'oz Aviv": "מעוז אביב",
+    "Neve Golan": "נווה גולן",
+    "Neve Chen": "נווה חן",
+    "Ganei Tzahala": "גני צהלה",
+    "Tzahala": "צהלה",
+    "Azorei Chen": "אזורי חן",
+    "Migdal Neve Tzedek": "מגדל נווה צדק",
+    "Gan Meir": "גן מאיר",
+    "Bazel": "בזל"
+}
+
 # === Safe JSON parse ===
 def parse_gpt_output_safe(raw_text: str):
     # 1) Unicode normalization (removes odd combinations/compatibility forms)
@@ -353,51 +396,10 @@ TEXT TO ANALYZE:
             full_data["rental_scope"] = "דירה שלמה" if full_data.get("category") == "מכירה" else "דירה שלמה"
 
         # Check if the address includes the same name as the neighborhood (in Hebrew)
-        # If yes – remove the address to avoid repeating it
+        # Remove address if it repeats the neighborhood name (Hebrew)
         if full_data.get("address") and full_data.get("neighborhood"):
-            hebrew_neighborhoods = {
-                "Old North": "הצפון הישן",
-                "New North": "הצפון החדש",
-                "Neve Tzedek": "נווה צדק",
-                "Florentin": "פלורנטין",
-                "Kerem HaTeimanim": "כרם התימנים",
-                "City Center": "לב תל אביב",
-                "Ramat Aviv": "רמת אביב",
-                "Ramat Aviv Gimel": "רמת אביב ג'",
-                "Ramat HaHayal": "רמת החייל",
-                "Bavli": "בבלי",
-                "Yad Eliyahu": "יד אליהו",
-                "Neve Shaanan": "נווה שאנן",
-                "Shapira": "שפירא",
-                "Kfar Shalem": "כפר שלם",
-                "Hatikva": "התקווה",
-                "Bitzaron": "ביצרון",
-                "Montefiore": "מונטיפיורי",
-                "Ajami": "עג'מי",
-                "Jaffa D": "יפו ד'",
-                "Jaffa G": "יפו ג'",
-                "Old Jaffa": "יפו העתיקה",
-                "Neve Ofer": "נווה עופר",
-                "Tel Kabir": "תל כביר",
-                "Neve Avivim": "נווה אביבים",
-                "Givat Amal": "גבעת עמל",
-                "Hadar Yosef": "הדר יוסף",
-                "Neve Sharett": "נווה שרת",
-                "Tel Baruch": "תל ברוך",
-                "North Tel Baruch": "תל ברוך צפון",
-                "Ma'oz Aviv": "מעוז אביב",
-                "Neve Golan": "נווה גולן",
-                "Neve Chen": "נווה חן",
-                "Ganei Tzahala": "גני צהלה",
-                "Tzahala": "צהלה",
-                "Azorei Chen": "אזורי חן",
-                "Migdal Neve Tzedek": "מגדל נווה צדק",
-                "Gan Meir": "גן מאיר",
-                "Bazel": "בזל"
-            }
-            # If address contains the Hebrew name of the neighborhood, we remove it
-            hebrew_neighborhood = hebrew_neighborhoods.get(full_data["neighborhood"])
-            if hebrew_neighborhood and hebrew_neighborhood in full_data["address"]:
+            heb_name = NEIGHBORHOOD_EN_TO_HE.get(full_data["neighborhood"])
+            if heb_name and heb_name in full_data["address"]:
                 full_data["address"] = None
 
         return full_data # Return the final clean apartment data
@@ -472,6 +474,18 @@ for doc in new_posts:
         data["id"] = post_id # Add the post ID
         data["images"] = post.get("images", []) # Add the list of images (if any)
         data["description"] = clean_post_text(post_text) # Clean and add the description
+        data["contactId"] = post.get("contactId")
+        data["contactName"] = post.get("contactName")
+        
+        # normalize neighborhood to Hebrew before saving
+        if data.get("neighborhood"):
+            data["neighborhood"] = NEIGHBORHOOD_EN_TO_HE.get(data["neighborhood"], data["neighborhood"])
+
+        raw_date = post_id.split("_")[0]   # למשל "25082025"
+        if len(raw_date) == 8 and raw_date.isdigit():
+            data["upload_date"] = f"{raw_date[4:]}-{raw_date[2:4]}-{raw_date[0:2]}"
+        else:
+            data["upload_date"] = None
 
         # יצירת fingerprint לפי שדות קיימים
         fingerprint = generate_fingerprint(data)
