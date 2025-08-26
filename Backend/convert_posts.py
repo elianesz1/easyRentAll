@@ -1,10 +1,11 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
+from datetime import datetime, timedelta, timezone
+from google.cloud.firestore_v1 import FieldFilter
 import openai
 import json
 import time
 import re
-from datetime import datetime
 import os
 from dotenv import load_dotenv
 import hashlib
@@ -149,6 +150,68 @@ NEIGHBORHOOD_EN_TO_HE = {
     "Bazel": "בזל"
 }
 
+def try_parse_date_from_id(doc_id: str):
+    """Fallback: parse ddmmyyyy_* pattern to datetime (UTC). Returns None if not matched."""
+    m = re.match(r"(\d{2})(\d{2})(\d{4})_", doc_id)
+    if not m:
+        return None
+    d, mth, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    try:
+        return datetime(y, mth, d, tzinfo=timezone.utc)
+    except Exception:
+        return None
+    
+def prune_older_than_days(collection_name: str, timestamp_field: str, days: int):
+    """Delete docs older than N days by the given timestamp_field. Batches to avoid limits.
+       If timestamp_field missing, optionally fallback to ID-date (ddmmyyyy_)."""
+    now_utc = datetime.now(timezone.utc)
+    cutoff = now_utc - timedelta(days=days)
+    total_deleted = 0
+
+    # prune_older_than_days:
+    q = db.collection(collection_name).where(
+        filter=FieldFilter(timestamp_field, "<", cutoff)
+    ).limit(500)
+
+    while True:
+        docs = list(q.stream())
+        if not docs:
+            break
+        batch = db.batch()
+        for doc in docs:
+            batch.delete(doc.reference)
+        batch.commit()
+        total_deleted += len(docs)
+
+    # Pass 2 (optional): delete by ID date fallback if field missing
+    # We fetch a page, filter client-side; do NOT scan massive collections repeatedly.
+    # If your collections are large, consider adding a Cloud Function or backfill indexed_at once.
+    q_missing = db.collection(collection_name).limit(500)
+    scanned = 0
+    while True:
+        docs = list(q_missing.stream())
+        if not docs:
+            break
+        to_delete = []
+        for doc in docs:
+            data = doc.to_dict()
+            if timestamp_field not in data:
+                ts_from_id = try_parse_date_from_id(doc.id)
+                if ts_from_id and ts_from_id < cutoff:
+                    to_delete.append(doc.reference)
+        if not to_delete:
+            break
+        batch = db.batch()
+        for ref in to_delete:
+            batch.delete(ref)
+        batch.commit()
+        total_deleted += len(to_delete)
+        scanned += len(docs)
+        if len(docs) < 500:
+            break  # reached end
+
+    print(f"🧹 Pruned {total_deleted} docs from '{collection_name}' older than {days} days (cutoff: {cutoff.isoformat()}).")
+
 # === Safe JSON parse ===
 def parse_gpt_output_safe(raw_text: str):
     # 1) Unicode normalization (removes odd combinations/compatibility forms)
@@ -203,7 +266,7 @@ def parse_gpt_output_safe(raw_text: str):
 def extract_apartment_data(post_text):
     current_year = datetime.now().year
 
-    prompt = f"""
+    prompt = fr"""
 You are a data extraction assistant specializing in Israeli real estate posts on Facebook.
 
 TASK: Extract data from this Facebook post about apartments for rent in Tel Aviv.
@@ -409,10 +472,18 @@ TEXT TO ANALYZE:
         print(f"API Error: {e}")
         return None
     
+# ---------- PRUNE old docs BEFORE processing ----------
+# מוחק מסמכים ב-posts וב-apartments שגילם מעל 10 ימים.
+# נסמך על שדה indexed_at; אם אין, ננסה לחלץ תאריך מה-ID בפורמט ddmmyyyy_XXXX.
+prune_older_than_days("posts", "indexed_at", 10)
+prune_older_than_days("apartments", "indexed_at", 10)
+
 # === Main process: fetch, extract and upload ===
 # Get all posts from the "posts" collection where status is "new" or "error"
 posts_ref = db.collection("posts")
-new_posts = posts_ref.where(filter=firestore.FieldFilter("status", "in", ["new", "error"])).stream()
+new_posts = posts_ref.where(
+    filter=firestore.FieldFilter("status", "in", ["new", "error"])
+).stream()
 
 # Counter to keep track of how many posts were saved
 processed = 0
@@ -496,7 +567,10 @@ for doc in new_posts:
             continue
 
         # בדיקת כפילות
-        existing = db.collection("apartments").where("fingerprint", "==", fingerprint).get()
+        # duplicate check:
+        existing = db.collection("apartments").where(
+            filter=FieldFilter("fingerprint", "==", fingerprint)
+        ).get()
         if existing:
             print(f"✗ Duplicate apartment (fingerprint match) – skipping.")
             posts_ref.document(post_id).update({"status": "duplicate"})
@@ -515,18 +589,21 @@ for doc in new_posts:
             posts_ref.document(post_id).update({"status": "incomplete"})  # סטטוס חדש אם תרצי לעבור עליהם בעתיד
             continue
 
-        # Save the full apartment data to the "apartments" collection
-        db.collection("apartments").document(post_id).set(data)
+        # save apartment (+ stamp indexed_at)
+        db.collection("apartments").document(post_id).set({
+            **data,
+            "indexed_at": firestore.SERVER_TIMESTAMP
+        })
 
-        # Mark the original post as processed
-        posts_ref.document(post_id).update({"status": "processed"})
+        # mark source post as processed (+ stamp indexed_at)
+        posts_ref.document(post_id).update({"status": "processed", "indexed_at": firestore.SERVER_TIMESTAMP})
         processed += 1 # Count how many were saved
         print(f"Apartment saved: {post_id}")
 
     except Exception as e:
         # If something went wrong while saving – print error and mark as error
         print(f"Error processing {post_id}: {e}")
-        posts_ref.document(post_id).update({"status": "error"})
+        posts_ref.document(post_id).update({"status": "error", "indexed_at": firestore.SERVER_TIMESTAMP})
 
     time.sleep(0.5)  # Wait half a second before the next post (to avoid overload)
 
