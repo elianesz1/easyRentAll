@@ -274,7 +274,9 @@ TASK: Extract data from this Facebook post about apartments for rent in Tel Aviv
 CRITICAL INSTRUCTIONS:
 1. Most Facebook posts ARE apartment listings unless they're clearly just brief comments.
 2. For neighborhood field, ONLY use standard Tel Aviv neighborhood names in English (see list below).
-3. Use the CURRENT YEAR ({current_year}) for all dates unless explicitly stated otherwise.
+3. Dates: Only if the post explicitly states a start date, return it in YYYY-MM-DD. 
+   - If the date is given without a year, use the CURRENT YEAR ({current_year}).
+   - If there is NO explicit date, set "available_from" to null. Never invent or default to Jan 1.
 4. For address field:
    - KEEP THE STREET NAME IN HEBREW even if there is no building number
    - Extract only the basic street information (name and number if available)
@@ -345,7 +347,8 @@ IMPORTANT FORMAT INSTRUCTIONS:
 - Always return ONLY a valid JSON object.
 - Do NOT wrap the response in ```json or any markdown.
 - Ensure the JSON is always complete and includes all fields, even if their value is null or empty.
-- If you cannot find a value, set it explicitly to null or an empty list.
+- If you cannot find a value, set it explicitly to null.
+- For "available_from": if no explicit date appears in the text, set null.
 - Make sure the JSON is valid and can be parsed correctly.
 - Do not include any special characters like quotes ("), backslashes (\), or smart punctuation.
 - Avoid writing any content in the "description" field — we will fill it ourselves from the original post.
@@ -446,6 +449,22 @@ TEXT TO ANALYZE:
 
         # Add the data we got from GPT to the default structure
         full_data.update(parsed_data)
+
+        # --- Normalize available_from: null if no explicit date was mentioned ---
+        if full_data.get("available_from"):
+            af = full_data["available_from"]
+            # If the date is exactly Jan 1 (default), check if it was explicitly mentioned
+            if re.fullmatch(r"\d{4}-01-01", str(af)):
+                # If no explicit date words in the post, set to None
+                has_explicit_date = re.search(
+                    r"(כניסה|זמינות|מתאריך|(\d{1,2}[./-]\d{1,2}([./-]\d{2,4})?)|(\d{4}-\d{2}-\d{2})|Immediate|מיידי|מיידית)",
+                    post_text
+                )
+                if not has_explicit_date:
+                    full_data["available_from"] = None
+        else:
+            # If no date was found, ensure it's None
+            full_data["available_from"] = None
 
         # Ensure category default if missing (robustness)
         if full_data.get("is_apartment") and not full_data.get("category"):
