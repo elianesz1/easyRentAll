@@ -36,14 +36,6 @@ function Thumb({
   );
 }
 
-/**
- * NewGalleryPreview
- * props:
- *  - images: string[] (חובה)
- *  - onImageClick: (index:number) => void (חובה)
- *  - buildSrcForWidth?: (url, width) => url  // אופציונלי, ל-srcset
- *  - sizes?: string                           // אופציונלי
- */
 export default function NewGalleryPreview({
   images,
   onImageClick,
@@ -68,7 +60,7 @@ export default function NewGalleryPreview({
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {/* גדולה ראשית */}
+      {/* Main pic */}
       <Thumb
         url={shown[0]}
         alt="תמונה ראשית"
@@ -77,9 +69,9 @@ export default function NewGalleryPreview({
         buildSrcForWidth={buildSrcForWidth}
         sizes={sizes}
       />
-      {/* יתר התמונות */}
+      {/* Rest pic */}
       {shown.slice(1).map((url, i) => {
-        const absoluteIndex = i + 1; // כי חתכנו 1 ראשונה
+        const absoluteIndex = i + 1; 
         const isLastTile = i === shown.slice(1).length - 1 && more > 0;
         return (
           <div key={`${url}-${i}`} className="relative">

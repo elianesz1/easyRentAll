@@ -1,36 +1,28 @@
-import React, { useState } from "react";
+import React from "react";
+import InlineField from "./InlineField";
 
 export default function InlineBoolField({ label, value, onSave }) {
-  const [editingVal, setEditingVal] = useState(valueToKey(value));
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    try { await onSave(keyToValue(editingVal)); } finally { setSaving(false); }
-  }
-
   return (
-    <div className="flex items-center justify-between gap-3 py-1">
-      <div className="text-sm text-gray-800"><strong>{label}:</strong> {renderBool(value)}</div>
-      <div className="flex items-center gap-2">
+    <InlineField
+      label={label}
+      value={value}
+      onSave={onSave}
+      renderDisplay={(v) => renderBool(v)}
+      renderInput={({ value: editingVal, setValue, onKeyDown }) => (
         <select
           className="border rounded px-2 py-1 text-sm"
           value={editingVal}
-          onChange={(e) => setEditingVal(e.target.value)}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
         >
           <option value="null">לא צוין</option>
           <option value="true">כן</option>
           <option value="false">לא</option>
         </select>
-        <button
-          onClick={handleSave}
-          className="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-60"
-          disabled={saving}
-        >
-          שמור
-        </button>
-      </div>
-    </div>
+      )}
+      toInternal={(v) => valueToKey(v)}
+      toExternal={(k) => keyToValue(k)}
+    />
   );
 }
 

@@ -1,56 +1,42 @@
-// מפת שכונות מאנגלית לעברית
-export const NEIGHBORHOOD_MAP = {
-  "Old North": "הצפון הישן",
-  "New North": "הצפון החדש",
-  "Neve Tzedek": "נווה צדק",
-  "Florentin": "פלורנטין",
-  "Kerem HaTeimanim": "כרם התימנים",
-  "Lev Tel Aviv": "לב תל אביב",
-  "City Center": "לב תל אביב",
-  "Ramat Aviv": "רמת אביב",
-  "Ramat Aviv Gimel": "רמת אביב ג'",
-  "Ramat HaHayal": "רמת החייל",
-  "Bavli": "בבלי",
-  "Yad Eliyahu": "יד אליהו",
-  "Neve Shaanan": "נווה שאנן",
-  "Shapira": "שפירא",
-  "Kfar Shalem": "כפר שלם",
-  "Hatikva": "התקווה",
-  "Bitzaron": "ביצרון",
-  "Montefiore": "מונטיפיורי",
-  "Ajami": "עג'מי",
-  "Jaffa D": "יפו ד'",
-  "Jaffa G": "יפו ג'",
-  "Old Jaffa": "יפו העתיקה",
-  "Neve Ofer": "נווה עופר",
-  "Tel Kabir": "תל כביר",
-  "Neve Avivim": "נווה אביבים",
-  "Givat Amal": "גבעת עמל",
-  "Hadar Yosef": "הדר יוסף",
-  "Neve Sharett": "נווה שרת",
-  "Tel Baruch": "תל ברוך",
-  "North Tel Baruch": "תל ברוך צפון",
-  "Ma'oz Aviv": "מעוז אביב",
-  "Neve Golan": "נווה גולן",
-  "Neve Chen": "נווה חן",
-  "Ganei Tzahala": "גני צהלה",
-  "Tzahala": "צהלה",
-  "Azorei Chen": "אזורי חן",
-  "Migdal Neve Tzedek": "מגדל נווה צדק",
-  "Gan Meir": "גן מאיר",
-  "Bazel": "בזל",
-};
+export const NEIGHBORHOODS_HE = [
+  "הצפון הישן",
+  "הצפון החדש",
+  "נווה צדק",
+  "פלורנטין",
+  "כרם התימנים",
+  "לב תל אביב",
+  "רמת אביב",
+  "רמת אביב ג'",
+  "רמת החייל",
+  "בבלי",
+  "יד אליהו",
+  "נווה שאנן",
+  "שפירא",
+  "כפר שלם",
+  "התקווה",
+  "ביצרון",
+  "מונטיפיורי",
+  "עג'מי",
+  "יפו ד'",
+  "יפו ג'",
+  "יפו העתיקה",
+  "נווה עופר",
+  "תל כביר",
+  "נווה אביבים",
+  "גבעת עמל",
+  "הדר יוסף",
+  "נווה שרת",
+  "תל ברוך",
+  "תל ברוך צפון",
+  "מעוז אביב",
+  "נווה גולן",
+  "נווה חן",
+  "גני צהלה",
+  "צהלה",
+  "אזורי חן",
+  "מגדל נווה צדק",
+  "גן מאיר",
+  "בזל",
+];
 
-// אנגלית -> עברית
-export function neighborhoodToHe(en) {
-  if (!en) return en;
-  return NEIGHBORHOOD_MAP[en] ?? en;
-}
-
-const HE_TO_EN = Object.entries(NEIGHBORHOOD_MAP).reduce((acc, [en, he]) => {
-  if (!acc[he]) acc[he] = en;
-  return acc;
-}, {});
-
-// עברית → אנגלית
-export const heToNeighborhood = (he) => HE_TO_EN[he] || he;
+export default NEIGHBORHOODS_HE;

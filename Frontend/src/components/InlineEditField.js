@@ -1,36 +1,32 @@
-import React, { useState } from "react";
+import React from "react";
+import InlineField from "./InlineField";
 
-export default function InlineEditField({ label, value, type = "text", onSave, dir = "rtl" }) {
-  const [editingVal, setEditingVal] = useState(type === "date" && value ? toYMD(value) : value ?? "");
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    setSaving(true);
-    try {
-      await onSave(type === "number" && editingVal !== "" ? Number(editingVal) : editingVal || null);
-    } finally { setSaving(false); }
-  }
-
+export default function InlineEditField({ label, value, type = "text", onSave, dir = "rtl", placeholder = "" }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-1">
-      <div className="text-sm text-gray-800"><strong>{label}:</strong> {renderValue(value, type)}</div>
-      <div className="flex items-center gap-2">
+    <InlineField
+      label={label}
+      value={value}
+      onSave={onSave}
+      renderDisplay={(v) => renderValue(v, type)}
+      renderInput={({ value: editingVal, setValue, onKeyDown }) => (
         <input
           dir={dir}
           type={type}
           className="border rounded px-2 py-1 text-sm w-44"
           value={editingVal ?? ""}
-          onChange={(e) => setEditingVal(e.target.value)}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
         />
-        <button
-          onClick={handleSave}
-          className="bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700 disabled:opacity-60"
-          disabled={saving}
-        >
-          שמור
-        </button>
-      </div>
-    </div>
+      )}
+
+      toInternal={(v) => (type === "date" && v ? toYMD(v) : (v ?? ""))}
+      toExternal={(v) => {
+        if (type === "number") return v !== "" ? Number(v) : null;
+        if (type === "date") return v ? new Date(v) : null;
+        return v !== "" ? v : null;
+      }}
+    />
   );
 }
 
@@ -47,7 +43,7 @@ function renderValue(v, type) {
   if (v == null || v === "") return "לא צוין";
   if (type === "date") {
     const d = new Date(v);
-    return isFinite(d) ? d.toLocaleDateString("he-IL") : v;
+    return isFinite(d) ? d.toLocaleDateString("he-IL") : String(v);
   }
   return String(v);
 }

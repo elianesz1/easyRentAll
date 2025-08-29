@@ -1,18 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 
-/**
- * ImageCarousel
- * props:
- *  - imageUrls: string[]  (חובה)
- *  - initialIndex?: number = 0
- *  - className?: string
- *  - onIndexChange?: (i:number) => void
- *  - sizes?: string  (ברירת מחדל טובה לגריד כרטיסים)
- *  - buildSrcForWidth?: (url:string, width:number) => string
- *      פונקציה אופציונלית לבניית URL לרוחבים שונים (למשל Firebase Storage עם resize).
- *      אם לא מספקים – נטען את ה-src הרגיל בלי srcSet.
- */
 export default function ImageCarousel({
   imageUrls,
   initialIndex = 0,
@@ -29,26 +17,21 @@ export default function ImageCarousel({
   const containerRef = useRef(null);
   const touchStartX = useRef(null);
 
-  // שמירה על אינדקס בטווח
   useEffect(() => {
     if (len === 0) return;
     if (index >= len) setIndex(0);
   }, [len, index]);
 
-  // אירועי מקלדת
   useEffect(() => {
     const onKey = (e) => {
       if (!containerRef.current) return;
-      // נוודא שהפוקוס במכולה/בתוכה כדי לא "לחטוף" מכל העמוד
       if (!containerRef.current.contains(document.activeElement)) return;
-
       if (e.key === "ArrowRight") next();
       else if (e.key === "ArrowLeft") prev();
       else if (e.key === "Escape") containerRef.current.blur();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index, len]);
 
   const next = () => {
@@ -65,7 +48,6 @@ export default function ImageCarousel({
     onIndexChange?.(i);
   };
 
-  // Swipe במובייל
   const onTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
   };
@@ -79,20 +61,15 @@ export default function ImageCarousel({
   };
   const onTouchEnd = () => (touchStartX.current = null);
 
-  // בניית srcSet אופציונלית
   const srcSetFor = useMemo(() => {
     if (!buildSrcForWidth) return null;
-    // רוחבים נפוצים לתמונות כרטיס/גלריה
     const widths = [320, 480, 640, 800, 1024, 1280];
     return (url) => widths.map((w) => `${buildSrcForWidth(url, w)} ${w}w`).join(", ");
   }, [buildSrcForWidth]);
 
   if (!len) {
-    // אין תמונות – הרכיב יכול להיות מוסתר ע״י ההורה ולהציג תמונת default במקום
     return (
-      <div
-        className={`relative aspect-[4/3] w-full overflow-hidden bg-gray-100 ${className}`}
-      />
+      <div className={`relative aspect-[4/3] w-full overflow-hidden bg-gray-100 ${className}`} />
     );
   }
 
@@ -100,14 +77,13 @@ export default function ImageCarousel({
     <div
       ref={containerRef}
       tabIndex={0}
-      className={`relative aspect-[4/3] w-full overflow-hidden rounded-2xl ${className}`}
+      className={`relative group aspect-[4/3] w-full overflow-hidden rounded-2xl touch-pan-y ${className}`}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
       aria-roledescription="carousel"
       aria-label="גלריית תמונות"
     >
-      {/* התמונות – ממוקמות זו על זו עם מעבר שקיפות */}
       {imageUrls.map((url, i) => (
         <img
           key={`${url}-${i}`}
@@ -115,7 +91,7 @@ export default function ImageCarousel({
           srcSet={srcSetFor ? srcSetFor(url) : undefined}
           sizes={srcSetFor ? sizes : undefined}
           alt={`תמונה ${i + 1}`}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${
+          className={`absolute inset-0 h-full w-full object-cover select-none transition-opacity duration-300 ${
             i === index ? "opacity-100" : "opacity-0"
           }`}
           loading={i === index ? "eager" : "lazy"}
@@ -124,7 +100,6 @@ export default function ImageCarousel({
         />
       ))}
 
-      {/* חצים */}
       {len > 1 && (
         <>
           <button
@@ -134,9 +109,13 @@ export default function ImageCarousel({
               prev();
             }}
             aria-label="תמונה קודמת"
-            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:scale-105 transition"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-10
+                       w-8 h-8 sm:w-9 sm:h-9 rounded-full
+                       bg-white/80 text-gray-800 shadow-sm
+                       opacity-70 md:opacity-0 md:group-hover:opacity-100
+                       transition active:scale-95 flex items-center justify-center focus:outline-none"
           >
-            ‹
+            <span className="text-[18px] sm:text-[20px] leading-none">‹</span>
           </button>
 
           <button
@@ -146,13 +125,15 @@ export default function ImageCarousel({
               next();
             }}
             aria-label="תמונה הבאה"
-            className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow hover:scale-105 transition"
-
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-10
+                       w-8 h-8 sm:w-9 sm:h-9 rounded-full
+                       bg-white/80 text-gray-800 shadow-sm
+                       opacity-70 md:opacity-0 md:group-hover:opacity-100
+                       transition active:scale-95 flex items-center justify-center focus:outline-none"
           >
-            ›
+            <span className="text-[18px] sm:text-[20px] leading-none">›</span>
           </button>
 
-          {/* מונה 1/N */}
           <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-2 py-0.5 text-xs text-white">
             {index + 1}/{len}
           </span>

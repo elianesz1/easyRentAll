@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { db, auth } from "../firebase";
@@ -12,11 +12,23 @@ export function AdminProvider({ children }) {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setEditMode(false);            // בכל החלפת משתמש – לצאת ממצב עריכה
-      if (!user) { setIsAdmin(false); setRoleLoading(false); return; }
+      setEditMode(false);
+      setRoleLoading(true);
       try {
+        if (!user) {
+          setIsAdmin(false);
+          return;
+        }
         const snap = await getDoc(doc(db, "users", user.uid));
-        setIsAdmin(snap.exists() && snap.data()?.role === "admin");
+        const data = snap.exists() ? snap.data() : {};
+        const adminFlag =
+          data?.role === "admin";
+
+        setIsAdmin(!!adminFlag);
+
+      } catch (e) {
+        console.error("admin check error:", e);
+        setIsAdmin(false);
       } finally {
         setRoleLoading(false);
       }
@@ -24,15 +36,19 @@ export function AdminProvider({ children }) {
     return () => unsub();
   }, []);
 
-  const toggleEditMode = () => setEditMode(v => !v);
+  const toggleEditMode = () => setEditMode((v) => !v);
+  const canEdit = isAdmin && editMode;
 
-  return (
-    <AdminCtx.Provider value={{ isAdmin, roleLoading, editMode, toggleEditMode }}>
-      {children}
-    </AdminCtx.Provider>
+  const value = useMemo(
+    () => ({ isAdmin, roleLoading, editMode, toggleEditMode, canEdit }),
+    [isAdmin, roleLoading, editMode]
   );
+
+  return <AdminCtx.Provider value={value}>{children}</AdminCtx.Provider>;
 }
 
 export function useAdmin() {
-  return useContext(AdminCtx);
+  const ctx = useContext(AdminCtx);
+  if (!ctx) throw new Error("useAdmin must be used within <AdminProvider>");
+  return ctx;
 }
