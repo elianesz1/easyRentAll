@@ -7,10 +7,23 @@ import { formatPrice } from "../utils/format";
 import PropTypes from "prop-types";
 import { useAdmin } from "../contexts/AdminContext";
 import { deleteApartment } from "../services/apartments";
+import { useEffect, useState } from "react"; 
+import useAuth from "../hooks/useAuth";
+import { toast } from "react-hot-toast"; 
 
 export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite }) {
   const navigate = useNavigate();
   const { isAdmin, editMode } = useAdmin();
+  const { user } = useAuth();
+  const [localFav, setLocalFav] = useState(!!isFavorite);
+  useEffect(() => setLocalFav(!!isFavorite), [isFavorite]);
+
+  const handleFavCard = (e) => {
+  e.stopPropagation();
+  if (!user) {
+    toast?.("כדי לשמור במועדפים יש להתחבר");
+    return;}
+  onToggleFavorite?.(id);};
 
   if (!apartment) return null;
 
@@ -23,12 +36,9 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
     rooms,
   } = apartment;
 
-  // תמונות נקיות
   const images = Array.isArray(rawImages) ? rawImages.filter(Boolean) : [];
   const hasImages = images.length > 0;
-
   const goToDetails = () => navigate(`/apartment/${id}`);
-
   const handleDelete = async (e) => {
     e.stopPropagation();
     const ok = window.confirm("למחוק את הדירה הזו? לא ניתן לבטל.");
@@ -37,21 +47,16 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
       await deleteApartment(id);
     } catch (err) {
       console.error("מחיקת דירה נכשלה:", err);
-      alert("אירעה שגיאה במחיקה. בדקי הרשאות וכללים.");
-    }
-  };
+    }};
 
   return (
     <div
       onClick={goToDetails}
-      className="bg-white rounded-2xl shadow-soft overflow-hidden relative flex flex-col cursor-pointer transform transition-transform transition-shadow duration-300 hover:scale-105 hover:shadow-lg"
-    >
-      {/* כפתור מועדפים */}
+      className="bg-white rounded-2xl shadow-soft overflow-hidden relative flex flex-col cursor-pointer transform transition-transform transition-shadow duration-300 hover:scale-105 hover:shadow-lg">
+      
+      {/* favorite button */}
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleFavorite?.(id);
-        }}
+        onClick={handleFavCard}
         className="absolute top-4 left-4 z-10 text-red-500 text-2xl bg-white rounded-full p-2 shadow-sm hover:scale-110 transition"
         aria-label={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
         title={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
@@ -59,7 +64,7 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
         {isFavorite ? <FaHeart /> : <FaRegHeart />}
       </button>
 
-      {/* כפתור מחיקה - רק לאדמין ובמצב עריכה */}
+      {/* delete button - for admin only (edit mode)*/}
       {isAdmin && editMode && (
         <button
           onClick={handleDelete}
@@ -71,7 +76,7 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
         </button>
       )}
 
-      {/* אזור התמונות */}
+      {/* pictures */}
       {hasImages ? (
         <ImageCarousel imageUrls={images} />
       ) : (
@@ -90,7 +95,7 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
         </div>
       )}
 
-      {/* פרטי הדירה */}
+      {/* details */}
       <div className="p-5 flex flex-col flex-grow">
         <h4 className="text-lg font-bold mb-1">{title || "ללא כותרת"}</h4>
 
@@ -99,7 +104,6 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
             ? description.replace(/\\n/g, " ").replace(/\n/g, " ")
             : "אין תיאור זמין."}
         </p>
-
         <p className="text-gray-700 text-sm">
           חדרים: {rooms ?? "לא צוין"} · מחיר:{" "}
           {typeof price === "number" ? formatPrice(price) : price || "לא צוין"}
