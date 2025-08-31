@@ -105,12 +105,12 @@ async function cleanPostHandle(post) {
         el.querySelectorAll('[role="link"]').forEach(link => link.remove());
     });
 
-    // שליפה מח
-    // דש של הטקסט אחרי הניקוי
+    // שליפה מחדש של הטקסט אחרי הניקוי
     const cleanText = await post.innerText();
     return cleanText;
 }
 
+//מריץ את הPROMPT להמרת הפוסטים והוצאת המידע הרלוונטי מהם
 function runConvertPosts() {
     // בונים נתיב כזה שיתאים מכל תיקייה שממנה מריצים את Node
     const scriptPath = path.join(__dirname, "..", "Backend", "convert_posts.py");
@@ -129,6 +129,7 @@ function runConvertPosts() {
     });
 }
 
+//בוחר קבוצת פייסבוק שונה לכל ריצה באופן רנדומלי
 const groupUrls = ['https://www.facebook.com/groups/333022240594651?locale=he_IL',
     'https://www.facebook.com/groups/1485565508385836?locale=he_IL',
     'https://www.facebook.com/groups/1749183625345821?locale=he_IL',

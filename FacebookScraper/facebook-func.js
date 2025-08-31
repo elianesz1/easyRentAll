@@ -32,7 +32,7 @@ async function scrapePosts(page) {
         }
 
         if (processedCount < MAX_POSTS_PER_RUN) {
-            scrollNextPost(page)
+            await scrollNextPost(page)
         }
     }
 }
@@ -132,43 +132,5 @@ async function getUserId(post) {
         return { authorId, authorName };
     });
 }
-
-async function scrollUntilVisible(page, locator, {
-    stepPx = 1000,      // כמה פיקסלים בכל צעד
-    pauseMs = 600,      // זמן המתנה בין צעדים
-    maxScrolls = 80     // גבול ביטחון
-} = {}) {
-    for (let i = 0; i < maxScrolls; i++) {
-        if (await locator.isVisible()) return true;
-
-        await page.evaluate((step) => window.scrollBy(0, step), stepPx);
-        await page.waitForTimeout(pauseMs);
-    }
-    return await locator.isVisible();
-}
-
-// async function ensureMostRecentSorting(page) {
-//     await page.waitForSelector('div[role="feed"]', { timeout: 20000 });
-
-//     const sortButton = page.getByRole('button', {
-//         // מכסה גם ממשק באנגלית
-//         name: /הרלוונטיים ביותר|Most relevant|Recommended/i
-//     });
-
-//     // לגלול עד שרואים את הכפתור
-//     await scrollUntilVisible(page, sortButton);
-
-//     if (await sortButton.isVisible()) {
-//         await sortButton.click();
-//         const mostRecentItem = page.getByRole('menuitem', {
-//             name: /חדשים|Most recent|Newest/i
-//         });
-//         if (await mostRecentItem.isVisible()) {
-//             await mostRecentItem.click();
-//             // לחכות ל"טלטול" הפיד
-//             await page.waitForTimeout(1500);
-//         }
-//     }
-// }
 
 module.exports = { scrapePosts };

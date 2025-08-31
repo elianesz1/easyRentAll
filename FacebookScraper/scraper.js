@@ -1,29 +1,48 @@
 const { chromium } = require("playwright");
-const { runConvertPosts, getRandomGroupUrl, groupUrll } = require("./utils");
+const { runConvertPosts, getRandomGroupUrl } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
-const INTERVAL_MINUTES = 20;
+const INTERVAL_MINUTES = 30;
+let isRunning = false;
 
 async function runJob() {
 
-    console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
+    if (isRunning) {
+        console.log("previous run still running");
+        return;
+    }
 
-    const userDataDir = 'C:\\Users\\elian\\AppData\\Local\\Google\\Chrome\\User Data\\MyPlaywrightProfile';
+    isRunning = true;
+    let context;
+    let page;
 
-    const context = await chromium.launchPersistentContext(userDataDir, {
-        headless: false,
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-    });
+    try {
+        console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
 
-    const page = await context.newPage();
-    const groupUrl = getRandomGroupUrl();
+        const userDataDir = 'C:\\Users\\elian\\AppData\\Local\\Google\\Chrome\\User Data\\MyPlaywrightProfile';
 
-    await page.goto('https://www.facebook.com/');
-    await page.goto(groupUrl, { waitUntil: 'domcontentloaded' });
+        context = await chromium.launchPersistentContext(userDataDir, {
+            headless: false,
+            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        });
 
-    await scrapePosts(page);
+        page = await context.newPage();
+        const groupUrl = getRandomGroupUrl();
 
-    runConvertPosts();
+        await page.goto('https://www.facebook.com/');
+        await page.goto(groupUrl, { waitUntil: 'domcontentloaded' });
+
+        await scrapePosts(page);
+
+        await runConvertPosts();
+
+    } catch (error) {
+        console.log("Error running scraper" + error);
+    } finally {
+        try { if (page && !page.isClosed()) await page.close(); } catch (_) { }
+        try { if (context) await context.close(); } catch (_) { }
+        isRunning = false;
+    }
 };
 
 runJob();

@@ -210,7 +210,7 @@ def prune_older_than_days(collection_name: str, timestamp_field: str, days: int)
         if len(docs) < 500:
             break  # reached end
 
-    print(f"🧹 Pruned {total_deleted} docs from '{collection_name}' older than {days} days (cutoff: {cutoff.isoformat()}).")
+    print(f"Pruned {total_deleted} docs from '{collection_name}' older than {days} days (cutoff: {cutoff.isoformat()}).")
 
 # === Safe JSON parse ===
 def parse_gpt_output_safe(raw_text: str):
@@ -245,7 +245,7 @@ def parse_gpt_output_safe(raw_text: str):
         return json.loads(cleaned)
     except Exception as e:
         # Helpful diagnostics: show where parsing choked.
-        print(f"❌ JSON decode failed: {e}")
+        print(f"JSON decode failed: {e}")
         try:
             msg = str(e)
             # Extract the character index (if provided by the exception message)
@@ -412,7 +412,7 @@ FEATURES TRANSLATION:
 - גג → roof
 - מרפסת שמש → sun_balcony
 
-⚠️ Output MUST be valid JSON. Even one incorrect quote or unescaped character will break it.
+ Output MUST be valid JSON. Even one incorrect quote or unescaped character will break it.
 
 TEXT TO ANALYZE:
 {post_text}
@@ -546,13 +546,13 @@ for doc in new_posts:
     try:
         # If GPT says this is NOT an apartment post – skip it
         if data.get("is_apartment") is False:
-            print("✗ Not an apartment listing.")
+            print("Not an apartment listing.")
             posts_ref.document(post_id).update({"status": "skipped"})
             continue
         
        # If the category is "החלפה" (home exchange) – skip it
         if data.get("category") == "החלפה":
-            print("✗ Home exchange (החלפה) — skipping.")
+            print("Home exchange (החלפה) — skipping.")
             posts_ref.document(post_id).update({"status": "skipped_exchange"})
             continue
 
@@ -581,7 +581,7 @@ for doc in new_posts:
         fingerprint = generate_fingerprint(data)
 
         if not fingerprint:
-            print(f"✗ Could not generate fingerprint for post {post_id} – skipping.")
+            print(f"Could not generate fingerprint for post {post_id} – skipping.")
             posts_ref.document(post_id).update({"status": "incomplete"})
             continue
 
@@ -591,7 +591,7 @@ for doc in new_posts:
             filter=FieldFilter("fingerprint", "==", fingerprint)
         ).get()
         if existing:
-            print(f"✗ Duplicate apartment (fingerprint match) – skipping.")
+            print(f"Duplicate apartment (fingerprint match) – skipping.")
             posts_ref.document(post_id).update({"status": "duplicate"})
             continue
 
@@ -604,7 +604,7 @@ for doc in new_posts:
         filled_fields = [f for f in important_fields if data.get(f)]
 
         if len(filled_fields) == 0:
-            print(f"✗ Skipping post {post_id} – no important fields present.")
+            print(f"Skipping post {post_id} – no important fields present.")
             posts_ref.document(post_id).update({"status": "incomplete"})  # סטטוס חדש אם תרצי לעבור עליהם בעתיד
             continue
 
