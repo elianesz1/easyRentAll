@@ -109,45 +109,89 @@ default_structure = {
 
 # --- neighborhoods mapping (single source of truth) ---
 NEIGHBORHOOD_EN_TO_HE = {
-    "Old North": "הצפון הישן",
-    "New North": "הצפון החדש",
+    "Lev Ha'Ir (City Center)": "לב העיר",
     "Neve Tzedek": "נווה צדק",
-    "Florentin": "פלורנטין",
+    "Shabazi Quarter": "שכונת שבזי",
     "Kerem HaTeimanim": "כרם התימנים",
-    "Lev Tel Aviv": "לב תל אביב",
-    "City Center": "לב תל אביב",
-    "Ramat Aviv": "רמת אביב",
-    "Ramat Aviv Gimel": "רמת אביב ג'",
-    "Ramat HaHayal": "רמת החייל",
-    "Bavli": "בבלי",
-    "Yad Eliyahu": "יד אליהו",
-    "Neve Shaanan": "נווה שאנן",
-    "Shapira": "שפירא",
-    "Kfar Shalem": "כפר שלם",
-    "Hatikva": "התקווה",
-    "Bitzaron": "ביצרון",
-    "Montefiore": "מונטיפיורי",
-    "Ajami": "עג'מי",
-    "Jaffa D": "יפו ד'",
-    "Jaffa G": "יפו ג'",
-    "Old Jaffa": "יפו העתיקה",
+    "Kerem Yisrael": "כרם ישראל",
+    "Ramat HaSharon Quarter": "שכונת רמת השרון",
+    "Tel Nordau": "תל נורדאו",
+    "Montefiore Quarter": "שכונת מונטיפיורי",
+    "HaKirya & Sarona": "הקריה ושרונה",
+    "Kiryat Meir": "קריית מאיר",
+    "The Old North": "הצפון הישן",
+    "The New North": "הצפון החדש",
+    "Bavli": "שיכון בבלי",
+    "Givat Amal B": "גבעת עמל ב'",
+    "Park Tzameret": "פארק צמרת",
+    "Florentin": "פלורנטין",
+    "Neve Sha’anan": "נווה שאנן",
+    "Shapira Quarter": "שכונת שפירא",
+    "Kiryat Shalom": "קריית שלום",
     "Neve Ofer": "נווה עופר",
-    "Tel Kabir": "תל כביר",
-    "Neve Avivim": "נווה אביבים",
-    "Givat Amal": "גבעת עמל",
-    "Hadar Yosef": "הדר יוסף",
-    "Neve Sharett": "נווה שרת",
-    "Tel Baruch": "תל ברוך",
-    "North Tel Baruch": "תל ברוך צפון",
-    "Ma'oz Aviv": "מעוז אביב",
-    "Neve Golan": "נווה גולן",
+    "Givat Herzl": "גבעת הרצל",
+    "Kiryat HaMelekha": "קריית המלאכה",
+    "HaRakevet Quarter": "שכונת הרכבת",
+    "Old Jaffa": "יפו העתיקה",
+    "Jaffa A (Dekel)": "יפו א' (דקר)",
+    "Jaffa G": "יפו ג'",
+    "Jaffa D": "יפו ד'",
+    "Ajami": "עג'מי",
+    "Givat Aliyah": "גבעת עלייה",
+    "Tzahalon": "צהלון",
+    "Shikuney Chisachon": "שיכוני חיסכון",
+    "Pardes Daka": "פרדס דכה",
+    "Givat Andromeda": "גבעת אנדרומדה",
+    "Manshiya": "מנשייה",
+    "American Colony": "המושבה האמריקאית",
+    "Yad Eliyahu": "יד אליהו",
+    "HaTikva Quarter": "שכונת התקווה",
+    "Kfar Shalem": "כפר שלם",
+    "Bitzaron": "ביצרון",
+    "Nachalat Yitzhak": "נחלת יצחק",
+    "Ramat Yisrael": "רמת ישראל",
+    "Beit Yaakov": "בית יעקב",
+    "Neve Tzahal": "נווה צה\"ל",
+    "Neve Kfir": "נווה כפיר",
+    "Neve Barbur": "נווה בארבור",
+    "Orot": "אורות",
+    "Neve Eliezer": "נווה אליעזר",
     "Neve Chen": "נווה חן",
-    "Ganei Tzahala": "גני צהלה",
-    "Tzahala": "צהלה",
+    "Nir Aviv": "ניר אביב",
+    "Ramat HaTayasim": "רמת הטייסים",
+    "Tel Haim": "תל חיים",
+    "Shikun Amami G": "שיכון עממי ג'",
+    "Ezra Quarter": "שכונת עזרא",
+    "HaArgazim Quarter": "שכונת הארגזים",
+    "Levana Quarter": "שכונת לבנה",
+    "Yedidya Quarter": "שכונת ידידיה",
+    "Ramat Aviv": "רמת אביב",
+    "Neve Avivim": "נווה אביבים",
+    "Ramat Aviv G": "רמת אביב ג'",
+    "New Ramat Aviv": "רמת אביב החדשה",
+    "Afeka": "אפקה",
+    "Lamed Quarter": "שכונת למד",
+    "Kochav HaTzafon": "כוכב הצפון",
+    "Nofei Yam": "נופי ים",
+    "Tzukey Aviv": "צוקי אביב",
     "Azorei Chen": "אזורי חן",
-    "Migdal Neve Tzedek": "מגדל נווה צדק",
-    "Gan Meir": "גן מאיר",
-    "Bazel": "בזל"
+    "New Gimel": "גימל החדשה",
+    "Ne’eman Towers": "מגדלי נאמן",
+    "Sea & Sun": "סי אנד סאן",
+    "Glilot": "גלילות",
+    "University Quarter": "קריית האוניברסיטה",
+    "Tel Baruch": "תל ברוך",
+    "Maoz Aviv": "מעוז אביב",
+    "Hadar Yosef": "הדר יוסף",
+    "Neot Afeka": "נאות אפקה",
+    "Revivim Quarter": "שכונת רביבים",
+    "Tzahala": "צהלה",
+    "HaMishtala": "המשתלה",
+    "Neve Sharett": "נווה שרת",
+    "Shikun Dan": "שיכון דן",
+    "Yashgav": "ישגב",
+    "Ramat HaChayal": "רמת החייל",
+    "Kiryat Atidim": "קריית עתידים"
 }
 
 def try_parse_date_from_id(doc_id: str):
@@ -299,8 +343,8 @@ RENTAL SCOPE CLASSIFICATION (MANDATORY):
 - Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
 - Return a Hebrew value in "rental_scope" with EXACTLY one of:
   - "דירה שלמה" → the entire unit is for rent/sale/sublet (e.g., "דירה שלמה", "דירת 3 חדרים להשכרה", "יחידה עצמאית", entire apartment).
-  - "שותף"     → looking for a roommate / room in shared apartment (e.g., "מחפשים שותף/ה", "חדר פנוי", "שכירות לחדר", "דירת שותפים", "Roommate", "Shared apartment").
-- Hints for "שותף": mentions of שותף/שותפה/שותפים, חדר פנוי, שכר דירה לחדר, כניסה לחדר, דירת שותפים, מחפשים לדירה קיימת.
+  - "שותפים"     → looking for a roommate / room in shared apartment (e.g., "מחפשים שותף/ה", "חדר פנוי", "שכירות לחדר", "דירת שותפים", "Roommate", "Shared apartment").
+- Hints for "שותפים": mentions of שותף/שותפה/שותפים, חדר פנוי, שכר דירה לחדר, כניסה לחדר, דירת שותפים, מחפשים לדירה קיימת.
 - Hints for "דירה שלמה": ניסוחים כלליים של דירה להשכרה/סאבלט/מכירה ללא בקשה מפורשת לשותף; יחידת דיור/סטודיו/דירת 2–4 חדרים; אין אזכור לחדר פנוי בדירת שותפים.
 - If "category" is "מכירה", set "rental_scope" to "דירה שלמה".
 - If unclear, prefer "דירה שלמה".
@@ -318,7 +362,7 @@ For apartment listings, provide this JSON structure:
   "is_apartment": true,
   "category": "<שכירות|מכירה|סאבלט>",
   "phone_number": "<digits only or null>",
-  "rental_scope": "<דירה שלמה|שותף>",
+  "rental_scope": "<דירה שלמה|דירת שותפים>",
   "title": "<Hebrew title - first meaningful phrase>",
   "description": "<leave empty, we will fill it from the original post text>",
   "price": <number or null>,
@@ -357,47 +401,96 @@ IMPORTANT FORMAT INSTRUCTIONS:
 + Never use the ASCII double quote (") inside any string value. 
 + If the text would normally include quotes (e.g., Hebrew abbreviations like ממ״ד), use the Hebrew gershayim character U+05F4 (״) or a single quote (').
 + The JSON itself must remain valid (inner quotes must not break JSON).
+- For "rooms": if the text mentions half a room (e.g., 4.5, 4 וחצי), return a decimal with .5 (e.g., 4.5). Never round.
+- Valid values for "rooms" include integers and .5 only (1, 1.5, 2, 2.5, ...). Use a dot as the decimal separator.
+
 
 
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
-- Old North
-- New North
+- Lev Ha'Ir (City Center)
 - Neve Tzedek
-- Florentin
+- Shabazi Quarter
 - Kerem HaTeimanim
-- City Center
-- Ramat Aviv
-- Ramat Aviv Gimel
-- Ramat HaHayal
+- Kerem Yisrael
+- Ramat HaSharon Quarter
+- Tel Nordau
+- Montefiore Quarter
+- HaKirya & Sarona
+- Kiryat Meir
+- The Old North
+- The New North
 - Bavli
-- Yad Eliyahu
-- Neve Shaanan
-- Shapira
-- Kfar Shalem
-- Hatikva
-- Bitzaron
-- Montefiore
-- Ajami
-- Jaffa D
-- Jaffa G
-- Old Jaffa
+- Givat Amal B
+- Park Tzameret
+- Florentin
+- Neve Sha’anan
+- Shapira Quarter
+- Kiryat Shalom
 - Neve Ofer
-- Tel Kabir
-- Neve Avivim
-- Givat Amal
-- Hadar Yosef
-- Neve Sharett
-- Tel Baruch
-- North Tel Baruch
-- Ma'oz Aviv
-- Neve Golan
+- Givat Herzl
+- Kiryat HaMelekha
+- HaRakevet Quarter
+- Old Jaffa
+- Jaffa A (Dekel)
+- Jaffa G
+- Jaffa D
+- Ajami
+- Givat Aliyah
+- Tzahalon
+- Shikuney Chisachon
+- Pardes Daka
+- Givat Andromeda
+- Manshiya
+- American Colony
+- Yad Eliyahu
+- HaTikva Quarter
+- Kfar Shalem
+- Bitzaron
+- Nachalat Yitzhak
+- Ramat Yisrael
+- Beit Yaakov
+- Neve Tzahal
+- Neve Kfir
+- Neve Barbur
+- Orot
+- Neve Eliezer
 - Neve Chen
-- Ganei Tzahala
-- Tzahala
+- Nir Aviv
+- Ramat HaTayasim
+- Tel Haim
+- Shikun Amami G
+- Ezra Quarter
+- HaArgazim Quarter
+- Levana Quarter
+- Yedidya Quarter
+- Ramat Aviv
+- Neve Avivim
+- Ramat Aviv G
+- New Ramat Aviv
+- Afeka
+- Lamed Quarter
+- Kochav HaTzafon
+- Nofei Yam
+- Tzukey Aviv
 - Azorei Chen
-- Migdal Neve Tzedek
-- Gan Meir
-- Bazel
+- New Gimel
+- Ne’eman Towers
+- Sea & Sun
+- Glilot
+- University Quarter
+- Tel Baruch
+- Maoz Aviv
+- Hadar Yosef
+- Neot Afeka
+- Revivim Quarter
+- Tzahala
+- HaMishtala
+- Neve Sharett
+- Shikun Dan
+- Yashgav
+- Ramat HaChayal
+- Kiryat Atidim
+
 
 FEATURES TRANSLATION:
 - מעלית → elevator
@@ -450,6 +543,49 @@ TEXT TO ANALYZE:
         # Add the data we got from GPT to the default structure
         full_data.update(parsed_data)
 
+        # --- Normalize rooms (.5 support) ---
+        def normalize_rooms_value(rooms_val, source_text: str):
+            if rooms_val is None:
+                # fallback: נסה לחלץ מהטקסט (4.5 / 4,5 / 4 וחצי / חדר וחצי)
+                t = source_text
+                # 4.5 / 4,5
+                m = re.search(r'(\d+)\s*[.,]\s*5\s*חדר', t)
+                if m: return float(m.group(1)) + 0.5
+                # 4 וחצי (עם או בלי "חדרים")
+                m = re.search(r'(\d+)\s*ו\s*חצי(?:\s*חדר(?:ים)?)?', t)
+                if m: return float(m.group(1)) + 0.5
+                # חדר וחצי
+                if re.search(r'חדר\s*ו\s*חצי', t):
+                    return 1.5
+                # מספר שלם רגיל (למקרה שאין .5)
+                m = re.search(r'(\d+)\s*חדר(?:ים)?', t)
+                if m: return float(m.group(1))
+                return None
+
+            # אם המודל החזיר מחרוזת
+            if isinstance(rooms_val, str):
+                s = rooms_val.strip()
+                # הפוך פסיקים לנקודה (4,5 -> 4.5)
+                s = s.replace(",", ".")
+                # 4 וחצי -> 4.5
+                s = re.sub(r'^(\d+)\s*ו\s*חצי$', lambda m: f"{m.group(1)}.5", s)
+                s = re.sub(r'^חדר\s*ו\s*חצי$', "1.5", s)
+                # השאר מספרים ונקודה בלבד
+                s = re.sub(r"[^0-9.]", "", s)
+                try:
+                    return float(s) if s else None
+                except ValueError:
+                    return None
+
+            # אם כבר מספר
+            try:
+                return float(rooms_val)
+            except Exception:
+                return None
+
+        rooms_norm = normalize_rooms_value(full_data.get("rooms"), post_text)
+        full_data["rooms"] = rooms_norm
+
         # --- Normalize available_from: null if no explicit date was mentioned ---
         if full_data.get("available_from"):
             af = full_data["available_from"]
@@ -494,8 +630,8 @@ TEXT TO ANALYZE:
 # ---------- PRUNE old docs BEFORE processing ----------
 # מוחק מסמכים ב-posts וב-apartments שגילם מעל 10 ימים.
 # נסמך על שדה indexed_at; אם אין, ננסה לחלץ תאריך מה-ID בפורמט ddmmyyyy_XXXX.
-prune_older_than_days("posts", "indexed_at", 10)
-prune_older_than_days("apartments", "indexed_at", 10)
+prune_older_than_days("posts", "indexed_at", 14)
+prune_older_than_days("apartments", "indexed_at", 14)
 
 # === Main process: fetch, extract and upload ===
 # Get all posts from the "posts" collection where status is "new" or "error"
