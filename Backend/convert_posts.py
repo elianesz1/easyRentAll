@@ -194,6 +194,31 @@ NEIGHBORHOOD_EN_TO_HE = {
     "Kiryat Atidim": "קריית עתידים"
 }
 
+def delete_posts_by_status(statuses, batch_size=500):
+    """
+    Delete documents from 'posts' where status is in statuses.
+    Runs in batches to respect Firestore limits.
+    """
+    total_deleted = 0
+    while True:
+        q = db.collection("posts").where(
+            filter=FieldFilter("status", "in", statuses)
+        ).limit(batch_size)
+
+        docs = list(q.stream())
+        if not docs:
+            break
+
+        batch = db.batch()
+        for doc in docs:
+            batch.delete(doc.reference)
+        batch.commit()
+
+        total_deleted += len(docs)
+        print(f"Deleted {len(docs)} posts this batch...")
+
+    print(f"Done. Deleted {total_deleted} posts with statuses: {statuses}")
+
 def try_parse_date_from_id(doc_id: str):
     """Fallback: parse ddmmyyyy_* pattern to datetime (UTC). Returns None if not matched."""
     m = re.match(r"(\d{2})(\d{2})(\d{4})_", doc_id)
@@ -764,3 +789,6 @@ for doc in new_posts:
 
 # Print how many apartments we saved at the end
 print(f"\n Done! {processed} apartments saved.")
+
+# --- Cleanup: delete skipped/duplicate posts ---
+delete_posts_by_status(["skipped", "duplicate"])
