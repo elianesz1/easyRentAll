@@ -1,4 +1,30 @@
-.env
-pycache/
+# --- Python cache ---
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Environment variables ---
+.env
+
+# --- Firebase credentials (keep private!) ---
 serviceAccountKey.json
+
+# --- Logs ---
+*.log
+error_log.jsonl
+
+# --- OS / Editor junk ---
+.DS_Store
+Thumbs.db
+
+# --- VSCode settings ---
+.vscode/
+
+# --- Jupyter checkpoints ---
+.ipynb_checkpoints/
