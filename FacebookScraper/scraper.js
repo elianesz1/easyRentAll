@@ -1,8 +1,10 @@
+require('dotenv').config({ path: process.env.DOTENV || '.env.local' });
+
 const { chromium } = require("playwright");
 const { runConvertPosts, getRandomGroupUrl } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
-const INTERVAL_MINUTES = 30;
+const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 30);
 let isRunning = false;
 
 async function runJob() {
@@ -13,18 +15,30 @@ async function runJob() {
     }
 
     isRunning = true;
+    let browser;
     let context;
     let page;
 
     try {
         console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
 
-        const userDataDir = 'C:\\Users\\elian\\AppData\\Local\\Google\\Chrome\\User Data\\MyPlaywrightProfile';
+        const mode = process.env.MODE || 'local';
+        const headless = (process.env.HEADLESS || 'true') !== 'false';
+        if ((process.env.MODE || 'local') === 'server') {
+            // קורא פרמטרים מה-ENV עם ברירות מחדל כמו שהיו
+            const headless = process.env.HEADLESS !== 'false'; 
+            const launchArgs = (process.env.PLAYWRIGHT_ARGS || '--no-sandbox --disable-dev-shm-usage')
+                .split(/\s+/).filter(Boolean);
 
-        context = await chromium.launchPersistentContext(userDataDir, {
-            headless: false,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        });
+            browser = await chromium.launch({ headless, args: launchArgs });
+            context = await browser.newContext({ storageState: process.env.STORAGE_STATE });
+        } else {
+            const userDataDir = 'C:\\Users\\elian\\AppData\\Local\\Google\\Chrome\\User Data\\MyPlaywrightProfile';
+            context = await chromium.launchPersistentContext(userDataDir, {
+                headless: false,
+                executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            });
+        }
 
         page = await context.newPage();
         const groupUrl = getRandomGroupUrl();
@@ -33,16 +47,16 @@ async function runJob() {
         await page.goto(groupUrl, { waitUntil: 'domcontentloaded' });
 
         await scrapePosts(page);
-
         await runConvertPosts();
 
     } catch (error) {
         console.log("Error running scraper" + error);
     } finally {
-        try { if (page && !page.isClosed()) await page.close(); } catch (_) { }
-        try { if (context) await context.close(); } catch (_) { }
-        isRunning = false;
-    }
+    try { if (page && !page.isClosed()) await page.close(); } catch (_) { }
+    try { if (context) await context.close(); } catch (_) { }
+    try { if (browser) await browser.close(); } catch (_) { } 
+    isRunning = false;
+}
 };
 
 runJob();

@@ -112,21 +112,25 @@ async function cleanPostHandle(post) {
 
 //מריץ את הPROMPT להמרת הפוסטים והוצאת המידע הרלוונטי מהם
 function runConvertPosts() {
-    // בונים נתיב כזה שיתאים מכל תיקייה שממנה מריצים את Node
-    const scriptPath = path.join(__dirname, "..", "Backend", "convert_posts.py");
-    const pythonCmd = process.env.PYTHON || "python";
-    const cmd = `${pythonCmd} "${scriptPath}"`;
+  const path = require("path");
+  const { exec } = require("child_process");
 
-    exec(cmd, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
-            return;
-        }
-        if (stderr && stderr.trim()) {
-            console.error(`שגיאת פלט: ${stderr}`);
-        }
-        console.log(`פלט הסקריפט:\n${stdout}`);
-    });
+  const isWin = process.platform === "win32";
+  const pythonCmd = process.env.PYTHON || (isWin ? "python" : "python3");
+
+  const backendDir = path.resolve(__dirname, "..", "Backend");
+  const cmd = `${pythonCmd} convert_posts.py`;
+
+  console.log("Running in dir:", backendDir);
+  console.log("Cmd:", cmd);
+
+  exec(cmd, { cwd: backendDir, env: process.env, shell: true }, (error, stdout, stderr) => {
+    if (stdout && stdout.trim()) console.log(stdout);
+    if (stderr && stderr.trim()) console.error(stderr);
+    if (error) {
+      console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
+    }
+  });
 }
 
 //בוחר קבוצת פייסבוק שונה לכל ריצה באופן רנדומלי

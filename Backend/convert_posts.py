@@ -501,7 +501,7 @@ prune_older_than_days("apartments", "indexed_at", 10)
 # Get all posts from the "posts" collection where status is "new" or "error"
 posts_ref = db.collection("posts")
 new_posts = posts_ref.where(
-    filter=firestore.FieldFilter("status", "in", ["new", "error"])
+    filter=FieldFilter("status", "in", ["new", "error"])
 ).stream()
 
 # Counter to keep track of how many posts were saved
