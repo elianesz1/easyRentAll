@@ -35,11 +35,14 @@ CATEGORY CLASSIFICATION (MANDATORY):
 - Return a Hebrew value in "category" with EXACTLY one of:
   - "שכירות"  → regular rental (e.g., "להשכרה", monthly rent, deposit)
   - "מכירה"   → for sale (e.g., "למכירה", asking price, deal/transaction)
-  - "סאבלט"   → sublet / temporary rental (e.g., "סאבלט", "השכרה זמנית", clear start/end dates for weeks/months)
-  - "החלפה"  → home exchange / swap (e.g., "דירה להחלפה", "החלפת דירה", "מחליפים דירה", "home exchange", "house swap")
-- Prefer "סאבלט" when the stay is clearly temporary even if "להשכרה" appears.
+  - "סאבלט"   → sublet / temporary rental
+
+STRICT SUBLET RULE:
+- Set category = "סאבלט" **ONLY** if the post explicitly contains one of these keywords (case-insensitive):
+  "סאבלט", "תת-השכרה", "השכרה זמנית", "sublet"
+- If these words do NOT appear explicitly, do NOT infer "סאבלט" even if the post has dates like "עד סוף החודש", "לשבועיים", "למס’ חודשים", or start/end dates. In such cases use "שכירות".
 - If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
-- If unclear, choose "שכירות" (NOT null).
+- If unclear, default to "שכירות" (NOT null).
 
 RENTAL SCOPE CLASSIFICATION (MANDATORY):
 - Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
