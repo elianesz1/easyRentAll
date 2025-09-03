@@ -87,5 +87,6 @@ NEIGHBORHOOD_EN_TO_HE = {
   "Shapira": "שפירא",
   "Tel Baruch": "תל ברוך",
   "Tel Haim": "תל חיים",
-  "Tel Nordau": "תל נורדאו"
+  "Tel Nordau": "תל נורדאו",
+  "Lev Ha'Ir": "לב העיר",
 }
