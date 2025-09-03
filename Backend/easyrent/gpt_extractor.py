@@ -26,16 +26,23 @@ CRITICAL INSTRUCTIONS:
    - Extract locations even when preceded by 'ברחוב', 'באזור', etc.
 5. If a post contains text with apartment details and comments, focus ONLY on the apartment details.
 6. Notice that the parameters title, description, and address are in Hebrew.
+7. If the post explicitly states a neighborhood (for example "בשכונת ___" or "שכונת ___"), you must set `neighborhood` to that exact neighborhood from the canonical list. 
+   - In this case, IGNORE any streets or landmarks that may suggest a different neighborhood (e.g., Rothschild, Dizengoff, Shuk HaPishpeshim).
+   - Streets or landmarks should only appear in `address` or `nearby_landmarks`.
+8. Only if no explicit neighborhood is mentioned, you may infer the neighborhood from well-known landmarks or streets (using the canonical list).
 
 CATEGORY CLASSIFICATION (MANDATORY):
 - Return a Hebrew value in "category" with EXACTLY one of:
   - "שכירות"  → regular rental (e.g., "להשכרה", monthly rent, deposit)
   - "מכירה"   → for sale (e.g., "למכירה", asking price, deal/transaction)
-  - "סאבלט"   → sublet / temporary rental (e.g., "סאבלט", "השכרה זמנית", clear start/end dates for weeks/months)
-  - "החלפה"  → home exchange / swap (e.g., "דירה להחלפה", "החלפת דירה", "מחליפים דירה", "home exchange", "house swap")
-- Prefer "סאבלט" when the stay is clearly temporary even if "להשכרה" appears.
+  - "סאבלט"   → sublet / temporary rental
+
+STRICT SUBLET RULE:
+- Set category = "סאבלט" **ONLY** if the post explicitly contains one of these keywords (case-insensitive):
+  "סאבלט", "תת-השכרה", "השכרה זמנית", "sublet"
+- If these words do NOT appear explicitly, do NOT infer "סאבלט" even if the post has dates like "עד סוף החודש", "לשבועיים", "למס’ חודשים", or start/end dates. In such cases use "שכירות".
 - If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
-- If unclear, choose "שכירות" (NOT null).
+- If unclear, default to "שכירות" (NOT null).
 
 RENTAL SCOPE CLASSIFICATION (MANDATORY):
 - Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
@@ -103,91 +110,95 @@ IMPORTANT FORMAT INSTRUCTIONS:
 - Valid values for "rooms" include integers and .5 only (1, 1.5, 2, 2.5, ...). Use a dot as the decimal separator.
 
 
-
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
-- Lev Ha'Ir (City Center)
-- Neve Tzedek
-- Shabazi Quarter
-- Kerem HaTeimanim
-- Kerem Yisrael
-- Ramat HaSharon Quarter
-- Tel Nordau
-- Montefiore Quarter
-- HaKirya & Sarona
-- Kiryat Meir
-- The Old North
-- The New North
-- Bavli
-- Givat Amal B
-- Park Tzameret
-- Florentin
-- Neve Sha’anan
-- Shapira Quarter
-- Kiryat Shalom
-- Neve Ofer
-- Givat Herzl
-- Kiryat HaMelekha
-- HaRakevet Quarter
-- Old Jaffa
-- Jaffa A (Dekel)
-- Jaffa G
-- Jaffa D
-- Ajami
-- Givat Aliyah
-- Tzahalon
-- Shikuney Chisachon
-- Pardes Daka
-- Givat Andromeda
-- Manshiya
-- American Colony
-- Yad Eliyahu
-- HaTikva Quarter
-- Kfar Shalem
-- Bitzaron
-- Nachalat Yitzhak
-- Ramat Yisrael
-- Beit Yaakov
-- Neve Tzahal
-- Neve Kfir
-- Neve Barbur
-- Orot
-- Neve Eliezer
-- Neve Chen
-- Nir Aviv
-- Ramat HaTayasim
-- Tel Haim
-- Shikun Amami G
-- Ezra Quarter
-- HaArgazim Quarter
-- Levana Quarter
-- Yedidya Quarter
-- Ramat Aviv
-- Neve Avivim
-- Ramat Aviv G
-- New Ramat Aviv
-- Afeka
-- Lamed Quarter
-- Kochav HaTzafon
-- Nofei Yam
-- Tzukey Aviv
-- Azorei Chen
-- New Gimel
-- Ne’eman Towers
-- Sea & Sun
-- Glilot
-- University Quarter
-- Tel Baruch
-- Maoz Aviv
-- Hadar Yosef
-- Neot Afeka
-- Revivim Quarter
-- Tzahala
-- HaMishtala
-- Neve Sharett
-- Shikun Dan
-- Yashgav
-- Ramat HaChayal
-- Kiryat Atidim
+- Abu Kabir  
+- Ohel Moshe
+- Ofek HaYam  
+- Orot  
+- Yarkon Industrial Zone  
+- Azorei Hen  
+- Afeka  
+- Bitzaron  
+- Givat Aliya  
+- Givat Herzl  
+- Givat Amal B  
+- HaMishtala  
+- The New North  
+- The Old North  
+- HaKirya  
+- Yad Eliyahu  
+- Jaffa G  
+- Jaffa D  
+- Yashgav  
+- Kochav HaTzafon  
+- Kfar Shalem  
+- Kerem HaTeimanim  
+- Kerem Yisrael  
+- Kerem Moshe  
+- Lev Tel Aviv (City Center)  
+- Mea Shearim  
+- Migdaley Ne'eman  
+- Machane Yehuda  
+- Machane Yosef  
+- Manshiya (Jaffa)  
+- Maoz Aviv  
+- Merkaz Ba'alei Melacha  
+- Merkaz Miskhari  
+- Hasan Arafe Compound  
+- Lodoweepol Compound  
+- Neot Afeka  
+- Nachalat Binyamin  
+- Nachalat Yitzhak  
+- Neve Avivim  
+- Neve Eliezer  
+- Neve Barbur  
+- Neve Chen  
+- Neve Kfir  
+- Neve Ofer  
+- Neve Tzedek  
+- Neve Tzahal  
+- Neve Shaanan  
+- Neve Shalom  
+- Neve Sharett  
+- Nofei Yam  
+- Nordia  
+- Sakanat Al-Turki  
+- Park Tzameret  
+- Florentin  
+- Pardes Daka  
+- Tzahala  
+- Tzahal On  
+- Tzukey Aviv  
+- Kiryat HaMelekha  
+- Kiryat Meir  
+- Kiryat Shaul  
+- Kiryat Shalom  
+- Ramat Aviv  
+- Ramat Aviv G  
+- Ramat HaHayal  
+- Ramat HaTayasim  
+- Ramat HaSharon  
+- Ramat Yisrael  
+- Shikun Bavli  
+- Shikun Dan  
+- Shikun Tzameret  
+- Shikuney Chisachon  
+- Ahuva  
+- HaArgazim  
+- HaTikva  
+- Yedidya  
+- Lamed  
+- Montefiore  
+- Machlol  
+- Ezra  
+- Pakidei Apak  
+- Revivim  
+- Shabazi  
+- Shpak  
+- Shapira  
+- Tel Baruch  
+- Tel Haim  
+- Tel Nordau 
 
 
 FEATURES TRANSLATION:
