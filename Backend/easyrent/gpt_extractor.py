@@ -105,89 +105,94 @@ IMPORTANT FORMAT INSTRUCTIONS:
 
 
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):
-- Lev Ha'Ir (City Center)
-- Neve Tzedek
-- Shabazi Quarter
-- Kerem HaTeimanim
-- Kerem Yisrael
-- Ramat HaSharon Quarter
-- Tel Nordau
-- Montefiore Quarter
-- HaKirya & Sarona
-- Kiryat Meir
-- The Old North
-- The New North
-- Bavli
-- Givat Amal B
-- Park Tzameret
-- Florentin
-- Neve Sha’anan
-- Shapira Quarter
-- Kiryat Shalom
-- Neve Ofer
-- Givat Herzl
-- Kiryat HaMelekha
-- HaRakevet Quarter
-- Old Jaffa
-- Jaffa A (Dekel)
-- Jaffa G
-- Jaffa D
-- Ajami
-- Givat Aliyah
-- Tzahalon
-- Shikuney Chisachon
-- Pardes Daka
-- Givat Andromeda
-- Manshiya
-- American Colony
-- Yad Eliyahu
-- HaTikva Quarter
-- Kfar Shalem
-- Bitzaron
-- Nachalat Yitzhak
-- Ramat Yisrael
-- Beit Yaakov
-- Neve Tzahal
-- Neve Kfir
-- Neve Barbur
-- Orot
-- Neve Eliezer
-- Neve Chen
-- Nir Aviv
-- Ramat HaTayasim
-- Tel Haim
-- Shikun Amami G
-- Ezra Quarter
-- HaArgazim Quarter
-- Levana Quarter
-- Yedidya Quarter
-- Ramat Aviv
-- Neve Avivim
-- Ramat Aviv G
-- New Ramat Aviv
-- Afeka
-- Lamed Quarter
-- Kochav HaTzafon
-- Nofei Yam
-- Tzukey Aviv
-- Azorei Chen
-- New Gimel
-- Ne’eman Towers
-- Sea & Sun
-- Glilot
-- University Quarter
-- Tel Baruch
-- Maoz Aviv
-- Hadar Yosef
-- Neot Afeka
-- Revivim Quarter
-- Tzahala
-- HaMishtala
-- Neve Sharett
-- Shikun Dan
-- Yashgav
-- Ramat HaChayal
-- Kiryat Atidim
+- Abu Kabir  
+- Ohel Moshe
+- Ofek HaYam  
+- Orot  
+- Yarkon Industrial Zone  
+- Azorei Hen  
+- Afeka  
+- Bitzaron  
+- Givat Aliya  
+- Givat Herzl  
+- Givat Amal B  
+- HaMishtala  
+- The New North  
+- The Old North  
+- HaKirya  
+- Yad Eliyahu  
+- Jaffa G  
+- Jaffa D  
+- Yashgav  
+- Kochav HaTzafon  
+- Kfar Shalem  
+- Kerem HaTeimanim  
+- Kerem Yisrael  
+- Kerem Moshe  
+- Lev Tel Aviv (City Center)  
+- Mea Shearim  
+- Migdaley Ne'eman  
+- Machane Yehuda  
+- Machane Yosef  
+- Manshiya (Jaffa)  
+- Maoz Aviv  
+- Merkaz Ba'alei Melacha  
+- Merkaz Miskhari  
+- Hasan Arafe Compound  
+- Lodoweepol Compound  
+- Neot Afeka  
+- Nachalat Binyamin  
+- Nachalat Yitzhak  
+- Neve Avivim  
+- Neve Eliezer  
+- Neve Barbur  
+- Neve Chen  
+- Neve Kfir  
+- Neve Ofer  
+- Neve Tzedek  
+- Neve Tzahal  
+- Neve Shaanan  
+- Neve Shalom  
+- Neve Sharett  
+- Nofei Yam  
+- Nordia  
+- Sakanat Al-Turki  
+- Park Tzameret  
+- Florentin  
+- Pardes Daka  
+- Tzahala  
+- Tzahal On  
+- Tzukey Aviv  
+- Kiryat HaMelekha  
+- Kiryat Meir  
+- Kiryat Shaul  
+- Kiryat Shalom  
+- Ramat Aviv  
+- Ramat Aviv G  
+- Ramat HaHayal  
+- Ramat HaTayasim  
+- Ramat HaSharon  
+- Ramat Yisrael  
+- Shikun Bavli  
+- Shikun Dan  
+- Shikun Tzameret  
+- Shikuney Chisachon  
+- Ahuva  
+- HaArgazim  
+- HaTikva  
+- Yedidya  
+- Lamed  
+- Montefiore  
+- Machlol  
+- Ezra  
+- Pakidei Apak  
+- Revivim  
+- Shabazi  
+- Shpak  
+- Shapira  
+- Tel Baruch  
+- Tel Haim  
+- Tel Nordau 
 
 
 FEATURES TRANSLATION:
