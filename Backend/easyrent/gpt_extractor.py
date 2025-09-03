@@ -31,18 +31,59 @@ CRITICAL INSTRUCTIONS:
    - Streets or landmarks should only appear in `address` or `nearby_landmarks`.
 8. Only if no explicit neighborhood is mentioned, you may infer the neighborhood from well-known landmarks or streets (using the canonical list).
 
+NEIGHBORHOOD DETERMINATION RULES:
+1) Explicit neighborhood override:
+   - If the post explicitly states a neighborhood (e.g., includes the phrase in Hebrew "בשכונת ___" or "שכונת ___"),
+     you must set `neighborhood` to that exact neighborhood from the canonical list (normalized to the exact spelling).
+   - In this case, IGNORE any streets or landmarks that may suggest a different neighborhood (e.g., Rothschild, Dizengoff, Shuk HaPishpeshim).
+   - Streets or landmarks should only appear in `address` or `nearby_landmarks`.
+
+2) Only if NO explicit neighborhood is mentioned, you may infer the neighborhood from well-known landmarks or streets (using the canonical list).
+
+3) STRICT CANONICAL NAME POLICY:
+   - You must choose the neighborhood EXACTLY as spelled in the canonical list below (character-for-character).
+   - Do NOT output synonyms or variants such as "Lev Ha'Ir", "Center", "City Center" unless they exactly match an item in the list.
+   - If you think it is the city center, use exactly: "Lev Tel Aviv (City Center)".
+   - For Ibn Gabirol near Jabotinsky/Ben-Gurion/Arlozorov (north of Dizengoff), use "The Old North".
+   - If unsure, set "neighborhood": null (do not invent a new name).
+
+4) LANDMARK-BASED NEIGHBORHOOD HINTS (use ONLY if no explicit neighborhood is stated):
+   - "שוק הפשפשים" / "Flea Market" / "Clock Tower" → use exactly "Jaffa D".
+   - If both "שוק הפשפשים" and "Florentin" appear: neighborhood = "Jaffa D"; keep "Florentin" only in address/nearby_landmarks.
+   - "שוק לוינסקי" / "Levinsky Market" / "Levinsky St" → "Florentin".
+   - "שוק הכרמל" / "Carmel Market" → "Kerem HaTeimanim".
+   - "נחלת בנימין" (המדרחוב) → "Nachalat Binyamin".
+   - "רוטשילד" / "שדרות רוטשילד" / "גן החשמל" / "הבימה" / "דיזנגוף סנטר" / "כיכר רבין" → "Lev Tel Aviv (City Center)".
+   - "אבן גבירול" בצומת/ליד "ז'בוטינסקי" / "בן-גוריון" / "ארלוזורוב" (צפונית לדיזנגוף) → "The Old North".
+   - "נמל תל אביב" / "Reading" → "Kochav HaTzafon".
+   - "עזריאלי" / "שרונה" / "תחנת השלום" → "HaKirya".
+   - "שוק התקווה" → "HaTikva".
+   - "רמת החייל" / "אסותא רמת החייל" → "Ramat HaHayal".
+   - "חוף תל ברוך" / "Tel Baruch Beach" → "Tel Baruch".
+
+5) Do NOT output "Lev Ha'Ir" / "לב העיר" / "Center" / "City Center" unless exactly "Lev Tel Aviv (City Center)".
+   If still unsure after applying these hints, set "neighborhood": null.
+
+
 CATEGORY CLASSIFICATION (MANDATORY):
 - Return a Hebrew value in "category" with EXACTLY one of:
   - "שכירות"  → regular rental (e.g., "להשכרה", monthly rent, deposit)
   - "מכירה"   → for sale (e.g., "למכירה", asking price, deal/transaction)
   - "סאבלט"   → sublet / temporary rental
+  - "החלפה"  → home exchange / swap (e.g., "דירה להחלפה", "החלפת דירה", "home exchange", "house swap")
 
 STRICT SUBLET RULE:
-- Set category = "סאבלט" **ONLY** if the post explicitly contains one of these keywords (case-insensitive):
+- Set category = "סאבלט" ONLY if the post explicitly contains one of these keywords (case-insensitive):
   "סאבלט", "תת-השכרה", "השכרה זמנית", "sublet"
-- If these words do NOT appear explicitly, do NOT infer "סאבלט" even if the post has dates like "עד סוף החודש", "לשבועיים", "למס’ חודשים", or start/end dates. In such cases use "שכירות".
+- If these words do NOT appear explicitly, do NOT infer "סאבלט" even if the post includes short ranges like "עד סוף החודש", "לשבועיים", "לחודשיים", or explicit start/end dates. In such cases use "שכירות".
 - If the post is about exchanging apartments (swap) and not about price/rent/sale, choose "החלפה".
 - If unclear, default to "שכירות" (NOT null).
+
+Examples:
+- "להשכרה דירת 2 חד׳ לחודשיים בלבד" → category: "שכירות"
+- "סאבלט דירת סטודיו לשבועיים" → category: "סאבלט"
+- "דירת חדר עד סוף אוקטובר (לא נכתב סאבלט)" → category: "שכירות"
+- "תת-השכרה חדר מרוהט" → category: "סאבלט"
 
 RENTAL SCOPE CLASSIFICATION (MANDATORY):
 - Classify whether the listing is for a whole apartment or for a roommate/room in a shared apartment.
