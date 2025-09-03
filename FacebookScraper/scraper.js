@@ -22,11 +22,9 @@ async function runJob() {
     try {
         console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
 
-        const mode = process.env.MODE || 'local';
-        const headless = (process.env.HEADLESS || 'true') !== 'false';
         if ((process.env.MODE || 'local') === 'server') {
             // קורא פרמטרים מה-ENV עם ברירות מחדל כמו שהיו
-            const headless = process.env.HEADLESS !== 'false'; 
+            const headless = process.env.HEADLESS !== 'false';
             const launchArgs = (process.env.PLAYWRIGHT_ARGS || '--no-sandbox --disable-dev-shm-usage')
                 .split(/\s+/).filter(Boolean);
 
@@ -52,11 +50,11 @@ async function runJob() {
     } catch (error) {
         console.log("Error running scraper" + error);
     } finally {
-    try { if (page && !page.isClosed()) await page.close(); } catch (_) { }
-    try { if (context) await context.close(); } catch (_) { }
-    try { if (browser) await browser.close(); } catch (_) { } 
-    isRunning = false;
-}
+        try { if (page && !page.isClosed()) await page.close(); } catch (_) { }
+        try { if (context) await context.close(); } catch (_) { }
+        try { if (browser) await browser.close(); } catch (_) { }
+        isRunning = false;
+    }
 };
 
 runJob();
