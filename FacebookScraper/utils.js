@@ -112,32 +112,37 @@ async function cleanPostHandle(post) {
 
 //מריץ את הPROMPT להמרת הפוסטים והוצאת המידע הרלוונטי מהם
 function runConvertPosts() {
-  const path = require("path");
-  const { exec } = require("child_process");
+    const path = require("path");
+    const { exec } = require("child_process");
 
-  const isWin = process.platform === "win32";
-  const pythonCmd = process.env.PYTHON || (isWin ? "python" : "python3");
+    const isWin = process.platform === "win32";
+    const pythonCmd = process.env.PYTHON || (isWin ? "python" : "python3");
 
-  const backendDir = path.resolve(__dirname, "..", "Backend");
-  const cmd = `${pythonCmd} convert_posts.py`;
+    const backendDir = path.resolve(__dirname, "..", "Backend");
+    const cmd = `${pythonCmd} convert_posts.py`;
 
-  console.log("Running in dir:", backendDir);
-  console.log("Cmd:", cmd);
+    console.log("Running in dir:", backendDir);
+    console.log("Cmd:", cmd);
 
-  exec(cmd, { cwd: backendDir, env: process.env, shell: true }, (error, stdout, stderr) => {
-    if (stdout && stdout.trim()) console.log(stdout);
-    if (stderr && stderr.trim()) console.error(stderr);
-    if (error) {
-      console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
-    }
-  });
+    exec(cmd, { cwd: backendDir, env: process.env, shell: true }, (error, stdout, stderr) => {
+        if (stdout && stdout.trim()) console.log(stdout);
+        if (stderr && stderr.trim()) console.error(stderr);
+        if (error) {
+            console.error(`שגיאה בהרצת convert_posts.py: ${error.message}`);
+        }
+    });
 }
 
 //בוחר קבוצת פייסבוק שונה לכל ריצה באופן רנדומלי
 const groupUrls = ['https://www.facebook.com/groups/333022240594651?locale=he_IL',
     'https://www.facebook.com/groups/1485565508385836?locale=he_IL',
     'https://www.facebook.com/groups/1749183625345821?locale=he_IL',
-    'https://www.facebook.com/groups/305906579600207?locale=he_IL']
+    'https://www.facebook.com/groups/305906579600207?locale=he_IL',
+    'https://www.facebook.com/groups/579315872436391/buy_sell_discussion?locale=he_IL',
+    'https://www.facebook.com/groups/ronkin?locale=he_IL',
+    'https://www.facebook.com/groups/131288860307566?locale=he_IL',
+    'https://www.facebook.com/groups/1458853481020151?locale=he_IL',
+    'https://www.facebook.com/groups/191591524188001?locale=he_IL']
 
 function getRandomGroupUrl() {
     const i = Math.floor(Math.random() * groupUrls.length);
