@@ -26,6 +26,10 @@ CRITICAL INSTRUCTIONS:
    - Extract locations even when preceded by 'ברחוב', 'באזור', etc.
 5. If a post contains text with apartment details and comments, focus ONLY on the apartment details.
 6. Notice that the parameters title, description, and address are in Hebrew.
+7. If the post explicitly states a neighborhood (for example "בשכונת ___" or "שכונת ___"), you must set `neighborhood` to that exact neighborhood from the canonical list. 
+   - In this case, IGNORE any streets or landmarks that may suggest a different neighborhood (e.g., Rothschild, Dizengoff, Shuk HaPishpeshim).
+   - Streets or landmarks should only appear in `address` or `nearby_landmarks`.
+8. Only if no explicit neighborhood is mentioned, you may infer the neighborhood from well-known landmarks or streets (using the canonical list).
 
 CATEGORY CLASSIFICATION (MANDATORY):
 - Return a Hebrew value in "category" with EXACTLY one of:
@@ -101,7 +105,6 @@ IMPORTANT FORMAT INSTRUCTIONS:
 + The JSON itself must remain valid (inner quotes must not break JSON).
 - For "rooms": if the text mentions half a room (e.g., 4.5, 4 וחצי), return a decimal with .5 (e.g., 4.5). Never round.
 - Valid values for "rooms" include integers and .5 only (1, 1.5, 2, 2.5, ...). Use a dot as the decimal separator.
-
 
 
 STANDARD TEL AVIV NEIGHBORHOODS (Use ONLY these in English):

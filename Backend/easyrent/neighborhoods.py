@@ -1,7 +1,7 @@
 # Single source of truth for neighborhood mapping (EN -> HE).
 NEIGHBORHOOD_EN_TO_HE = {
   "Abu Kabir": "אבו כביר",
-  "Ohel Moshe (Tel Aviv)": "אוהל משה (תל אביב)",
+  "Ohel Moshe": "אוהל משה",
   "Ofek HaYam": "אופק הים",
   "Orot": "אורות",
   "Yarkon Industrial Zone": "אזור תעשייה עבר הירקון",
@@ -24,7 +24,7 @@ NEIGHBORHOOD_EN_TO_HE = {
   "Kerem HaTeimanim": "כרם התימנים",
   "Kerem Yisrael": "כרם ישראל",
   "Kerem Moshe": "כרם משה",
-  "Lev Tel Aviv": "לב תל אביב",
+  "Lev Tel Aviv (City Center)": "לב תל אביב",
   "Mea Shearim": "מאה שערים",
   "Migdaley Ne'eman": "מגדלי נאמן",
   "Machane Yehuda": "מחנה יהודה",
