@@ -119,7 +119,7 @@ function runConvertPosts() {
     const pythonCmd = process.env.PYTHON || (isWin ? "python" : "python3");
 
     const backendDir = path.resolve(__dirname, "..", "Backend");
-    const cmd = `${pythonCmd} convert_posts.py`;
+    const cmd = `${pythonCmd} main.py`;
 
     console.log("Running in dir:", backendDir);
     console.log("Cmd:", cmd);

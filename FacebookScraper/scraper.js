@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 const { runConvertPosts, getRandomGroupUrl } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
-const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 30);
+const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 20);
 let isRunning = false;
 
 async function runJob() {
