@@ -62,9 +62,9 @@ export default function ApartmentPage() {
   const telHref     = useMemo(() => (phoneDigits ? `tel:+${phoneDigits}` : null), [phoneDigits]);
   const waHref      = useMemo(() => (phoneDigits ? `https://wa.me/${phoneDigits}` : null), [phoneDigits]);
 
-  const isRental = useMemo(() => {
+  const isForSell = useMemo(() => {
     const c = (apartment?.category || "").toString().toLowerCase();
-    return c.includes("שכיר") || c.includes("rent");
+    return c.includes("מכירה");
   }, [apartment?.category]);
 
   const load = useCallback(async () => {
@@ -114,224 +114,397 @@ export default function ApartmentPage() {
   const isFavorite = !!(aptId && favorites.includes(aptId));
 
   return (
-    <Layout>
-      <div className="bg-white min-h-screen">
-        {/* חזור + מחיקת דירה */}
-        <div className={`flex items-center max-w-5xl mx-auto px-6 mt-6 ${(isAdmin && editMode) ? "justify-between" : "justify-end"}`}>
-          {isAdmin && editMode && (
-            <button onClick={handleDeleteApartment} className="bg-red-600 text-white px-4 py-2 rounded-md shadow hover:bg-red-700">
-              מחק דירה <FaTrashAlt className="inline ms-2" />
-            </button>
-          )}
-          
-          <button onClick={() => navigate(-1)} className="text-gray-700 hover:text-blue-600 text-base font-semibold transition">← חזור</button>
-          
-        </div>
+  <Layout>
+    <div className="bg-white min-h-screen">
+      {/* חזור + מחיקת דירה */}
+      <div
+        className={`flex items-center max-w-5xl mx-auto px-6 mt-6 ${
+          isAdmin && editMode ? "justify-between" : "justify-end"
+        }`}
+      >
+        {isAdmin && editMode && (
+          <button
+            onClick={handleDeleteApartment}
+            className="bg-red-600 text-white px-4 py-2 rounded-md shadow hover:bg-red-700"
+          >
+            מחק דירה <FaTrashAlt className="inline ms-2" />
+          </button>
+        )}
 
-        <div className="max-w-5xl mx-auto p-6">
-          {/* Gallery */}
+        <button
+          onClick={() => navigate(-1)}
+          className="text-gray-700 hover:text-blue-600 text-base font-semibold transition"
+        >
+          ← חזור
+        </button>
+      </div>
+
+      <div className="max-w-5xl mx-auto p-6">
+        {/* Gallery */}
           {!editMode ? (
-            <>
-              <NewGalleryPreview
-                images={imageUrls}
-                onImageClick={(i) => { setCurrentIndex(i); setIsModalOpen(true); }}
-              />
-              <ImageModal 
-              isOpen={isModalOpen}
-              images={imageUrls}
-              startIndex={currentIndex}
-              onClose={() => setIsModalOpen(false)}
-              onNext={handleNext}
-              onPrev={handlePrev} />
-            </>
+            apartment.images && apartment.images.length > 0 ? (
+              <>
+                <NewGalleryPreview
+                  images={imageUrls}
+                  onImageClick={(i) => {
+                    setCurrentIndex(i);
+                    setIsModalOpen(true);
+                  }}
+                />
+                <ImageModal
+                  isOpen={isModalOpen}
+                  images={imageUrls}
+                  startIndex={currentIndex}
+                  onClose={() => setIsModalOpen(false)}
+                  onNext={handleNext}
+                  onPrev={handlePrev}
+                />
+              </>
+            ) : (
+              <p className="text-gray-500 text-sm italic">לא פורסמו תמונות</p>
+            )
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {(apartment.images || []).map((url) => (
                 <div key={url} className="relative">
-                  <img src={url} alt="apartment" className="w-full h-40 object-cover rounded-lg" />
+                  <img
+                    src={url}
+                    alt="apartment"
+                    className="w-full h-40 object-cover rounded-lg"
+                  />
                   <button
                     onClick={() => handleRemoveImage(url)}
                     className="absolute top-2 right-2 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center shadow hover:bg-red-700"
                     title="מחק תמונה"
-                  >✕</button>
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
-              {imageUrls.length === 0 && <div className="text-sm text-gray-500">אין תמונות להצגה.</div>}
             </div>
           )}
 
-          {/* Title + favorites */}
-          <div className="flex items-center justify-between my-4">
-            <h1 className="md:text-2xl font-bold leading-tight text-gray-900">{apartment.title || "דירה ללא שם"}</h1>
-            <button
-              type="button"
-              onClick={handleFavClick}
-              className="shrink-0 text-red-500 text-2xl bg-white/90 rounded-full p-2 shadow-sm hover:scale-110 transition"
-              aria-label={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-              title={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-            >
-              {isFavorite ? <FaHeart /> : <FaRegHeart />}
-            </button>
-          </div>
+        {/* Title + favorites */}
+        <div className="flex items-center justify-between my-4">
+          <h1 className="text-xl md:text-2xl font-bold leading-tight text-gray-900">
+            {apartment.title || "דירה ללא שם"}
+          </h1>
+          <button
+            type="button"
+            onClick={handleFavClick}
+            className="shrink-0 text-red-500 text-2xl bg-white/90 rounded-full p-2 shadow-sm hover:scale-110 transition"
+            aria-label={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
+            title={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
+          >
+            {isFavorite ? <FaHeart /> : <FaRegHeart />}
+          </button>
+        </div>
 
-          {/* Details */}
-          {!editMode ? (
-            <div className="bg-gray-50 rounded-2xl shadow px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-800 text-sm">
-              <div><strong>תאריך העלאה:</strong> {apartment.upload_date ? formatDate(apartment.upload_date) : "לא צוין"}</div>
-              <div><strong>מפרסם:</strong> {apartment.contactName || "לא צוין"}</div>
-              
-              <div><strong>קטגוריה:</strong> {apartment.category || "לא צוין"}</div>
-              {isRental && (
+        {/* Details + Original in one card */}
+        {!editMode ? (
+          <section className="bg-gray-50 rounded-2xl shadow px-6 py-6 text-gray-800">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div>
+                <strong>תאריך העלאה:</strong>{" "}
+                {apartment.upload_date ? formatDate(apartment.upload_date) : "לא צוין"}
+              </div>
+              <div>
+                <strong>מפרסם:</strong> {apartment.contactName || "לא צוין"}
+              </div>
+
+              <div>
+                <strong>קטגוריה:</strong> {apartment.category || "לא צוין"}
+              </div>
+              {!isForSell && (
                 <div>
                   <strong>סוג השכרה:</strong>{" "}
                   {apartment.rental_scope
-                    ? (apartment.rental_scope === "שותף" ? "דירת שותפים" : apartment.rental_scope)
+                    ? apartment.rental_scope === "שותף"
+                      ? "דירת שותפים"
+                      : apartment.rental_scope
                     : "לא צוין"}
                 </div>
               )}
 
-              <div><strong>כתובת:</strong> {apartment.address || "לא צוין"}</div>
-              <div><strong>מחיר:</strong> {apartment.price ? formatPrice(apartment.price) : "לא צוין"}</div>
+              <div>
+                <strong>כתובת:</strong> {apartment.address || "לא צוין"}
+              </div>
+              <div>
+                <strong>מחיר:</strong>{" "}
+                {apartment.price ? formatPrice(apartment.price) : "לא צוין"}
+              </div>
 
-              <div><strong>שכונה:</strong> {apartment.neighborhood || "לא צוין"}</div>
-              <div><strong>תאריך כניסה:</strong> {apartment.available_from ? formatDate(apartment.available_from) : "לא צוין"}</div>
+              <div>
+                <strong>שכונה:</strong> {apartment.neighborhood || "לא צוין"}
+              </div>
+              <div>
+                <strong>תאריך כניסה:</strong>{" "}
+                {apartment.available_from ? formatDate(apartment.available_from) : "לא צוין"}
+              </div>
 
-              <div><strong>מספר חדרים:</strong> {apartment.rooms ?? "לא צוין"}</div>
-              <div><strong>שטח:</strong> {apartment.size ? `${apartment.size} מ"ר` : "לא צוין"}</div>
+              <div>
+                <strong>מספר חדרים:</strong> {apartment.rooms ?? "לא צוין"}
+              </div>
+              <div>
+                <strong>שטח:</strong> {apartment.size ? `${apartment.size} מ"ר` : "לא צוין"}
+              </div>
 
-              <div><strong>קומה:</strong> {apartment.floor === 0 ? "קרקע" : (apartment.floor ?? "לא צוין")}</div>
-              <div><strong>מרפסת:</strong> <BoolIcon v={apartment.has_balcony} /></div>
+              <div>
+                <strong>קומה:</strong>{" "}
+                {apartment.floor === 0 ? "קרקע" : apartment.floor ?? "לא צוין"}
+              </div>
+              <div>
+                <strong>מרפסת:</strong> <BoolIcon v={apartment.has_balcony} />
+              </div>
 
-              <div><strong>חיות מחמד:</strong> <BoolIcon v={apartment.pets_allowed} /></div>
-              <div><strong>מעלית:</strong> <BoolIcon v={apartment.has_elevator} /></div>
+              <div>
+                <strong>חיות מחמד:</strong> <BoolIcon v={apartment.pets_allowed} />
+              </div>
+              <div>
+                <strong>מעלית:</strong> <BoolIcon v={apartment.has_elevator} />
+              </div>
 
-              <div><strong>ממ״ד:</strong> <BoolIcon v={apartment.has_safe_room} /></div>
-              <div><strong>חניה:</strong> <BoolIcon v={apartment.has_parking} /></div>
+              <div>
+                <strong>ממ״ד:</strong> <BoolIcon v={apartment.has_safe_room} />
+              </div>
+              <div>
+                <strong>חניה:</strong> <BoolIcon v={apartment.has_parking} />
+              </div>
 
-              <div><strong>מתווך:</strong> <BoolIcon v={apartment.has_broker} /></div>
+              <div>
+                <strong>מתווך:</strong> <BoolIcon v={apartment.has_broker} />
+              </div>
             </div>
-          ) : (
-            <div className="bg-gray-50 rounded-2xl shadow p-6 grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-800">
-              {/* Edit */}
-              <InlineEditField     label="תאריך העלאה"   type="date" value={apartment.upload_date}         onSave={(v)=>saveField({upload_date:v})} />
-              <InlineEditField     label="מפרסם"      value={apartment.contactName}                    onSave={(v)=>saveField({contactName:v})} />
-              <InlineSelectField   label="קטגוריה"       value={apartment.category}                        onSave={(v)=>saveField({category:v})}
-                                  options={[{value:"שכירות", label:"שכירות"},{value:"מכירה", label:"מכירה"}, {value:"סאבלט", label:"סאבלט"}]} />
-              <InlineSelectField   label="סוג השכרה"     value={apartment.rental_scope}                    onSave={(v)=>saveField({rental_scope:v})}
-                                   options={[{value:"דירה שלמה", label:"דירה שלמה"},{value:"שותף", label:"דירת שותפים"}]} />
-              <InlineEditField     label="כתובת"         value={apartment.address}                         onSave={(v)=>saveField({address:v})} />
-              <InlineEditField     label="מחיר"       type="number" value={apartment.price}             onSave={(v)=>saveField({price:v})} />
 
-              <InlineSelectField   label="שכונה"         value={apartment.neighborhood}
-                      options={NEIGHBORHOODS_HE.map(n => ({ value: n, label: n }))}
-                      onSave={(v)=>saveField({ neighborhood: v || null })} />
-              <InlineEditField     label="תאריך כניסה" type="date" value={apartment.available_from}      onSave={(v)=>saveField({available_from:v})} />
-              <InlineSelectField   label="מספר חדרים"
-                      value={apartment.rooms != null ? String(apartment.rooms) : ""}
-                      options={[
-                        {value:"1", label:"1"}, {value:"1.5", label:"1.5"},
-                        {value:"2", label:"2"}, {value:"2.5", label:"2.5"},
-                        {value:"3", label:"3"}, {value:"3.5", label:"3.5"},
-                        {value:"4", label:"4"}, {value:"4.5", label:"4.5"},
-                        {value:"5", label:"5"},
-                      ]}
-                      onSave={(v)=>saveField({ rooms: v ? parseFloat(v) : null })}
+            {apartment.description && apartment.description.trim() && (
+              <>
+                <hr className="my-6 border-gray-200" />
+                <h2 className="text-right text-base md:text-lg font-semibold text-gray-800 mb-2">
+                  הפוסט המקורי מהפייסבוק
+                </h2>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line break-words">
+                  {(apartment.description || "").replace(/\\n/g, "\n")}
+                </p>
+              </>
+            )}
+          </section>
+        ) : (
+          <section className="bg-gray-50 rounded-2xl shadow p-6 text-gray-800">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InlineEditField
+                label="תאריך העלאה"
+                type="date"
+                value={apartment.upload_date}
+                onSave={(v) => saveField({ upload_date: v })}
               />
-              <InlineEditField     label="שטח"          type="number" value={apartment.size}             onSave={(v)=>saveField({size:v})} />
-              <InlineEditField     label="קומה"          type="number" value={apartment.floor}            onSave={(v)=>saveField({floor:v})} />
-              <InlineBoolField     label="מרפסת"         value={apartment.has_balcony}                     onSave={(v)=>saveField({has_balcony:v})} />
-              <InlineBoolField     label="חיות מחמד"     value={apartment.pets_allowed}                    onSave={(v)=>saveField({pets_allowed:v})} />
-              <InlineBoolField     label="מעלית"         value={apartment.has_elevator}                    onSave={(v)=>saveField({has_elevator:v})} />
-              <InlineBoolField     label="ממ״ד"          value={apartment.has_safe_room}                   onSave={(v)=>saveField({has_safe_room:v})} />
-              <InlineBoolField     label="חניה"          value={apartment.has_parking}                     onSave={(v)=>saveField({has_parking:v})} />
-              <InlineBoolField     label="מתווך"         value={apartment.has_broker}                      onSave={(v)=>saveField({has_broker:v})} />
-              <InlineEditField     label="כותרת"         value={apartment.title}                           onSave={(v)=>saveField({title:v})} />
+              <InlineEditField
+                label="מפרסם"
+                value={apartment.contactName}
+                onSave={(v) => saveField({ contactName: v })}
+              />
+              <InlineSelectField
+                label="קטגוריה"
+                value={apartment.category}
+                onSave={(v) => saveField({ category: v })}
+                options={[
+                  { value: "שכירות", label: "שכירות" },
+                  { value: "מכירה", label: "מכירה" },
+                  { value: "סאבלט", label: "סאבלט" },
+                ]}
+              />
+              <InlineSelectField
+                label="סוג השכרה"
+                value={apartment.rental_scope}
+                onSave={(v) => saveField({ rental_scope: v })}
+                options={[
+                  { value: "דירה שלמה", label: "דירה שלמה" },
+                  { value: "שותף", label: "דירת שותפים" },
+                ]}
+              />
+              <InlineEditField
+                label="כתובת"
+                value={apartment.address}
+                onSave={(v) => saveField({ address: v })}
+              />
+              <InlineEditField
+                label="מחיר"
+                type="number"
+                value={apartment.price}
+                onSave={(v) => saveField({ price: v })}
+              />
 
-      
+              <InlineSelectField
+                label="שכונה"
+                value={apartment.neighborhood}
+                options={NEIGHBORHOODS_HE.map((n) => ({ value: n, label: n }))}
+                onSave={(v) => saveField({ neighborhood: v || null })}
+              />
+              <InlineEditField
+                label="תאריך כניסה"
+                type="date"
+                value={apartment.available_from}
+                onSave={(v) => saveField({ available_from: v })}
+              />
+              <InlineSelectField
+                label="מספר חדרים"
+                value={apartment.rooms != null ? String(apartment.rooms) : ""}
+                options={[
+                  { value: "1", label: "1" },
+                  { value: "1.5", label: "1.5" },
+                  { value: "2", label: "2" },
+                  { value: "2.5", label: "2.5" },
+                  { value: "3", label: "3" },
+                  { value: "3.5", label: "3.5" },
+                  { value: "4", label: "4" },
+                  { value: "4.5", label: "4.5" },
+                  { value: "5", label: "5" },
+                ]}
+                onSave={(v) => saveField({ rooms: v ? parseFloat(v) : null })}
+              />
+              <InlineEditField
+                label="שטח"
+                type="number"
+                value={apartment.size}
+                onSave={(v) => saveField({ size: v })}
+              />
+              <InlineEditField
+                label="קומה"
+                type="number"
+                value={apartment.floor}
+                onSave={(v) => saveField({ floor: v })}
+              />
+              <InlineBoolField
+                label="מרפסת"
+                value={apartment.has_balcony}
+                onSave={(v) => saveField({ has_balcony: v })}
+              />
+              <InlineBoolField
+                label="חיות מחמד"
+                value={apartment.pets_allowed}
+                onSave={(v) => saveField({ pets_allowed: v })}
+              />
+              <InlineBoolField
+                label="מעלית"
+                value={apartment.has_elevator}
+                onSave={(v) => saveField({ has_elevator: v })}
+              />
+              <InlineBoolField
+                label="ממ״ד"
+                value={apartment.has_safe_room}
+                onSave={(v) => saveField({ has_safe_room: v })}
+              />
+              <InlineBoolField
+                label="חניה"
+                value={apartment.has_parking}
+                onSave={(v) => saveField({ has_parking: v })}
+              />
+              <InlineBoolField
+                label="מתווך"
+                value={apartment.has_broker}
+                onSave={(v) => saveField({ has_broker: v })}
+              />
+              <InlineEditField
+                label="כותרת"
+                value={apartment.title}
+                onSave={(v) => saveField({ title: v })}
+              />
+            </div>
+
+            {/* edit text */}
+            <hr className="my-6 border-gray-200" />
+            <h2 className="text-right text-base md:text-lg font-semibold text-gray-800 mb-2">
+              הפוסט המקורי מהפייסבוק
+            </h2>
+            <EditableDescription
+              value={(apartment.description || "").replace(/\\n/g, "\n")}
+              onSave={(v) => saveField({ description: v })}
+            />
+          </section>
+        )}
+
+        {/* Contact (bottom, no frame) */}
+        <div className="mt-8 flex flex-col sm:flex-row sm:items-center gap-2">
+          {apartment.phone_number && (
+            <div className="relative">
+              {!showPhone ? (
+                <button
+                  onClick={() => setShowPhone(true)}
+                  className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition flex items-center justify-center gap-2"
+                >
+                  <FaPhoneAlt />
+                  <span>הצג מספר טלפון</span>
+                </button>
+              ) : (
+                <>
+                  {isMobile && telHref ? (
+                    <a
+                      href={telHref}
+                      className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition inline-flex items-center justify-center gap-2"
+                    >
+                      <FaPhoneAlt />
+                      {apartment.phone_number}
+                    </a>
+                  ) : (
+                    <a
+                      href={telHref || "#"}
+                      className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition inline-flex items-center justify-center gap-2"
+                    >
+                      <FaPhoneAlt />
+                      {apartment.phone_number}
+                    </a>
+                  )}
+                </>
+              )}
             </div>
           )}
 
-          {/* Contact */}
-          <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-2">
-            {apartment.phone_number && (
-              <div className="relative">
-                {!showPhone ? (
-                  <button onClick={() => setShowPhone(true)} className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition flex items-center justify-center gap-2">
-                    <FaPhoneAlt />
-                    <span>הצג מספר טלפון</span>
-                  </button>
-                ) : (
-                  <>
-                    {isMobile && telHref ? (
-                      <a href={telHref} className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition inline-flex items-center justify-center gap-2">
+          {waHref && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 px-2 rounded-md bg-[#35d984] text-white text-xs font-medium hover:bg-emerald-500/90 shadow-sm inline-flex items-center justify-center gap-2"
+            >
+              <FaWhatsapp className="text-base" />
+              WhatsApp
+            </a>
+          )}
 
-                        <FaPhoneAlt />
-                        {apartment.phone_number}
-                      </a>
-                    ) : (
-                      <a href={telHref} className="h-9 min-w-[160px] px-3 rounded-md text-white text-xs font-medium bg-emerald-400 hover:bg-emerald-500/90 shadow-sm transition inline-flex items-center justify-center gap-2">
-                        <FaPhoneAlt/>
-                        {apartment.phone_number}
-                      </a>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {waHref && (
-              <a href={waHref} target="_blank" rel="noopener noreferrer" className="h-9 px-2 rounded-md bg-[#35d984] text-white text-xs font-medium hover:bg-emerald-500/90 shadow-sm inline-flex items-center justify-center gap-2">
-
-                <FaWhatsapp className="text-base" />
-                WhatsApp
-              </a>
-            )}
-
-            {apartment.contactId && (
-              <a href={`https://m.me/${apartment.contactId}`} target="_blank" rel="noopener noreferrer" className="h-9 px-2 rounded-md bg-[#42a5ff] text-white text-xs font-medium hover:bg-sky-500/90 shadow-sm inline-flex items-center justify-center gap-2">
-
-                <FaFacebookMessenger className="text-base" />
-                שלח/י הודעה ב-Messenger
-              </a>
-            )}
-          </div>
-
-
-
-          {/* Original post */}
-          {!editMode ? (
-            <p className="text-gray-600 mt-10 leading-relaxed whitespace-pre-line">
-              {(apartment.description || "אין תיאור זמין").replace(/\\n/g, "\n")}
-            </p>
-          ) : (
-            <EditableDescription
-              value={(apartment.description || "").replace(/\\n/g, "\n")}
-              onSave={(v)=>saveField({description:v})}
-            />
+          {apartment.contactId && (
+            <a
+              href={`https://m.me/${apartment.contactId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 px-2 rounded-md bg-[#42a5ff] text-white text-xs font-medium hover:bg-sky-500/90 shadow-sm inline-flex items-center justify-center gap-2"
+            >
+              <FaFacebookMessenger className="text-base" />
+              שלח/י הודעה ב-Messenger
+            </a>
           )}
         </div>
       </div>
-    </Layout>
-  );
+    </div>
+  </Layout>
+);
 }
 
 function EditableDescription({ value, onSave }) {
   const [text, setText] = useState(value || "");
   const [saving, setSaving] = useState(false);
 
-  useEffect(()=>{ setText(value || ""); }, [value]);
+  useEffect(() => { setText(value || ""); }, [value]);
 
   return (
-    <div className="bg-gray-50 rounded-2xl shadow p-4">
+    <div className="p-0">
       <textarea
         value={text}
-        onChange={(e)=>setText(e.target.value)}
+        onChange={(e) => setText(e.target.value)}
         className="w-full min-h-[160px] border rounded p-3 text-sm"
         placeholder="הקלד תיאור…"
       />
       <div className="flex justify-end mt-2">
         <button
-          onClick={async ()=>{ setSaving(true); try { await onSave(text || null); } finally { setSaving(false); } }}
+          onClick={async () => { setSaving(true); try { await onSave(text || null); } finally { setSaving(false); } }}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-60"
           disabled={saving}
         >
@@ -341,3 +514,4 @@ function EditableDescription({ value, onSave }) {
     </div>
   );
 }
+

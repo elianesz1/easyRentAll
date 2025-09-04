@@ -5,13 +5,9 @@ import ApartmentCard from "../components/ApartmentCard";
 import useAuth from "../hooks/useAuth";
 import useFavorites from "../hooks/useFavorites";
 import useApartments from "../hooks/useApartments";
-import { SORTS, sortComparators, mapFeature } from "../utils/searchConfig";
+import { SORTS, mapFeature } from "../utils/searchConfig";
 import { encodeSearchParams, decodeSearchParams } from "../utils/searchParams";
 
-const toNumber = (n) => {
-  const x = typeof n === "string" ? Number(n.replace(/[^\d.-]/g, "")) : Number(n);
-  return Number.isFinite(x) ? x : null;
-};
 
 const fmtDate = (iso) => {
   try {
@@ -63,24 +59,33 @@ export default function SearchResultsPage() {
       }
 
       if (s.priceMax) {
-        const p = toNumber(apt.price);
+        const p = apt.price;
         if (p != null && p > Number(s.priceMax)) return false;
       }
 
       if (rMin != null || rMax != null) {
-        const r = toNumber(apt.rooms);
+        const r = apt.rooms;
         if (r == null) return false;
         if (rMin != null && r < rMin) return false;
         if (rMax != null && r > rMax) return false;
       }
 
-      if ((dFrom || dTo) && apt.available_from) {
-        const aptDate = new Date(apt.available_from);
-        if (isFinite(aptDate)) {
-          if (dFrom && aptDate < dFrom) return false;
-          if (dTo && aptDate > dTo) return false;
+      if (dFrom || dTo) {
+        const raw = apt.available_from;
+
+        if (!raw) {
+          if (!allowUnknown) return false;  
+        } else {
+          const aptDate = new Date(raw);
+          if (!isFinite(aptDate)) {
+            if (!allowUnknown) return false; 
+          } else {
+            if (dFrom && aptDate < dFrom) return false;
+            if (dTo && aptDate > dTo) return false;
+          }
         }
       }
+
 
       if (s.apartmentMode && s.category === "שכירות") {
         const scope = (apt.rental_scope || "").trim();
@@ -105,12 +110,39 @@ export default function SearchResultsPage() {
     });
   }, [apartments, filters]);
 
-  // Sort
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort(sortComparators[sortBy] ?? sortComparators["newest"]);
-    return arr;
-  }, [filtered, sortBy]);
+  // Sort (client-side)
+const sorted = useMemo(() => {
+  const arr = [...filtered];
+
+  switch (sortBy) {
+    case "price-asc":
+      arr.sort((a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY));
+      break;
+
+    case "price-desc":
+      arr.sort((a, b) => (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY));
+      break;
+
+    case "oldest":
+      arr.sort((a, b) => {
+        const am = a.indexed_at?.toMillis?.() ?? 0;
+        const bm = b.indexed_at?.toMillis?.() ?? 0;
+        return am - bm;
+      });
+      break;
+
+    case "newest":
+    default:
+      arr.sort((a, b) => {
+        const am = a.indexed_at?.toMillis?.() ?? 0;
+        const bm = b.indexed_at?.toMillis?.() ?? 0;
+        return bm - am;
+      });
+  }
+
+  return arr;
+}, [filtered, sortBy]);
+
 
   const removeNeighborhood = (he) =>
     setFilters((f) => ({ ...f, neighborhoodsHe: (f.neighborhoodsHe || []).filter((x) => x !== he) }));
