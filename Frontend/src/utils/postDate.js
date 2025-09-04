@@ -16,6 +16,7 @@ export function getPostDateMillis(ap) {
     ap?.createdAt ?? ap?.created_at,
     ap?.postedAt  ?? ap?.posted_at,
     ap?.scrapedAt ?? ap?.scraped_at,
+    ap?.indexed_at ?? ap?.indexed_at,
     ap?.timestamp,
   ];
   for (const v of candidates) {
