@@ -98,6 +98,13 @@ def process_posts_stream(statuses=("new", "error")) -> int:
 
         print(f"\nProcessing post {post_id}...")
 
+        # === NEW RULE: skip posts with no contactName ===
+        # If contactName is missing or null, we don't want to process this post.
+        if not post.get("contactName"):
+            print(f"Skipping post {post_id} – missing contactName")
+            posts_ref.document(post_id).update({"status": "skipped"})
+            continue
+
         # Guard: no text
         if not post_text:
             print("Skipping empty post.")
