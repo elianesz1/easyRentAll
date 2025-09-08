@@ -28,3 +28,6 @@ Thumbs.db
 
 # --- Jupyter checkpoints ---
 .ipynb_checkpoints/
+
+# --- Specific files to ignore ---
+convert_posts.py

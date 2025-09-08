@@ -207,6 +207,20 @@ PHONE NUMBER (MANDATORY):
 - Detect Israeli numbers (050/052/054… and +972 variants).
 - Normalize to digits only (e.g., "0521234567"). If none → null.
 
+MANDATORY FALLBACK & NORMALIZATION RULES:
+- If the post says "סטודיו", set "rooms": 1 (never null).
+- If the post describes "יחידת דיור" or "גלריה" as a single unit → rooms=1.
+- If the text contains the word "נדל״ן" or a company name → "has_broker": true.
+- Normalize property_type strictly:
+  * "דירת גן" → "apartment" and set "has_garden": true
+  * "סטודיו" → "apartment" (rooms=1)
+  * "פנטהאוז" → "penthouse"
+  * "דופלקס" → "duplex"
+- If no explicit price → "price": null.
+- If no explicit address but a neighborhood is given → copy the neighborhood into "address".
+- If no explicit available_from → "available_from": null.
+- Always include ALL fields, with null where information is missing.
+
 OUTPUT JSON (complete object, no markdown):
 {{
   "is_apartment": true,

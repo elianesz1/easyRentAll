@@ -3,3 +3,4 @@ google-cloud-firestore==2.16.1
 python-dotenv==1.0.1
 openai==1.40.3
 requests==2.32.3
+tzdata>=2024.1

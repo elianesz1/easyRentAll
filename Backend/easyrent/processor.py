@@ -10,6 +10,81 @@ from .gpt_extractor import extract_apartment_data
 from .fingerprint import generate_fingerprint
 from .neighborhoods import NEIGHBORHOOD_EN_TO_HE
 from .config import ERROR_LOG_PATH
+from datetime import datetime, time as dtime
+
+# ---- Timezone setup (Windows-safe) ----
+try:
+    # Primary: stdlib zoneinfo with IANA tz database available
+    from zoneinfo import ZoneInfo
+    TZ_IL = ZoneInfo("Asia/Jerusalem")
+
+    def local_noon(y: int, m: int, d: int):
+        return datetime(y, m, d, 12, 0, tzinfo=TZ_IL)
+
+except Exception:
+    # Try loading tzdata (pip install tzdata)
+    try:
+        import tzdata  # noqa: F401
+        from zoneinfo import ZoneInfo as _ZI
+        TZ_IL = _ZI("Asia/Jerusalem")
+
+        def local_noon(y: int, m: int, d: int):
+            return datetime(y, m, d, 12, 0, tzinfo=TZ_IL)
+
+    except Exception:
+        # Fallback to pytz if available
+        try:
+            import pytz
+            TZ_IL = pytz.timezone("Asia/Jerusalem")
+
+            def local_noon(y: int, m: int, d: int):
+                # pytz requires localize()
+                return TZ_IL.localize(datetime(y, m, d, 12, 0))
+
+        except Exception:
+            # Last resort: fixed +03:00 (no DST awareness)
+            from datetime import timezone, timedelta
+            TZ_IL = timezone(timedelta(hours=3))
+
+            def local_noon(y: int, m: int, d: int):
+                return datetime(y, m, d, 12, 0, tzinfo=TZ_IL)
+# ---- End TZ setup ----
+
+
+def to_noon_timestamp(date_str: str):
+    """
+    Takes a date string in format YYYY-MM-DD
+    and returns a datetime set to 12:00 noon in Asia/Jerusalem timezone.
+    """
+    if not date_str:
+        return None
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d").date()
+        return local_noon(d.year, d.month, d.day)
+    except ValueError:
+        return None
+    
+    
+IMMEDIATE_RE = re.compile(r"(כניסה\s*מיידית|כניסה\s*מידית|מיידי|מידי|זמין\s*מיידית|פינוי\s*מיידי|ASAP|זמין\s*עכשיו)")
+
+def upload_date_from_post_id_noon(post_id: str):
+    """
+    Extracts datetime at 12:00 (Asia/Jerusalem) from id formatted as ddmmyyyy_xxxx.
+    Returns datetime or None if invalid.
+    """
+    raw = (post_id or "").split("_")[0]
+    if len(raw) == 8 and raw.isdigit():
+        y = int(raw[4:])
+        m = int(raw[2:4])
+        d = int(raw[0:2])
+        return local_noon(y, m, d)
+    return None
+
+def today_noon_il():
+    """ Today at 12:00 in Asia/Jerusalem """
+    now_il = datetime.now(TZ_IL)
+    return local_noon(now_il.year, now_il.month, now_il.day)
+
 
 # Default apartment structure for consistency across documents
 DEFAULT_APT = {
@@ -170,6 +245,27 @@ def process_posts_stream(statuses=("new", "error")) -> int:
                 full_data["neighborhood"] = NEIGHBORHOOD_EN_TO_HE.get(
                     full_data["neighborhood"], full_data["neighborhood"]
                 )
+            
+            # === NEW: available_from -> Timestamp@12:00 with "immediate" fallback ===
+            af_raw = full_data.get("available_from")
+
+            # keep existing datetime as-is
+            af_dt = af_raw if isinstance(af_raw, datetime) else None
+
+            if isinstance(af_raw, str) and af_raw.strip():
+                # Try parsing the given date
+                af_dt = to_noon_timestamp(af_raw.strip())
+                if not af_dt and IMMEDIATE_RE.search(post_text):
+                    # If parsing failed but text says "immediate", use upload date or today
+                    af_dt = upload_date_from_post_id_noon(post_id) or today_noon_il()
+            elif not af_raw:
+                # Empty/None -> "immediate" heuristic
+                if IMMEDIATE_RE.search(post_text):
+                    af_dt = upload_date_from_post_id_noon(post_id) or today_noon_il()
+
+            # only set if we actually computed something
+            if af_dt is not None:
+                full_data["available_from"] = af_dt
 
             # Derive upload_date from ID prefix: ddmmyyyy_XXXX → yyyy-mm-dd
             raw_date = (post_id or "").split("_")[0]
