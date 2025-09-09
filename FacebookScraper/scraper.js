@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 const { runConvertPosts, getRandomGroupUrl } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
-const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 20);
+const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 30);
 let isRunning = false;
 
 async function runJob() {
@@ -23,7 +23,6 @@ async function runJob() {
         console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
 
         if ((process.env.MODE || 'local') === 'server') {
-            // קורא פרמטרים מה-ENV עם ברירות מחדל כמו שהיו
             const headless = process.env.HEADLESS !== 'false';
             const launchArgs = (process.env.PLAYWRIGHT_ARGS || '--no-sandbox --disable-dev-shm-usage')
                 .split(/\s+/).filter(Boolean);
