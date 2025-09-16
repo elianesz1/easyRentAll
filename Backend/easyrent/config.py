@@ -18,8 +18,9 @@ OPENAI_MAX_TOKENS = 3000
 
 # Firestore / housekeeping settings
 FIRESTORE_DELETE_BATCH = 500        # batch size for deletions
-PRUNE_DAYS = 14                     # days threshold for pruning old docs
-
+PRUNE_DAYS = 100                     # days threshold for pruning old docs ,
+                                    # we change this to 100 only for our mentor to checking
+                                    # in the original repo it is 14 days
 # Local JSONL log file for problematic posts
 ERROR_LOG_PATH = BASE_DIR / "error_log.jsonl"
 ERROR_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)

@@ -13,8 +13,6 @@ def generate_fingerprint(data: dict):
         components.append(f"rooms={data['rooms']}")
     if data.get("price"):
         components.append(f"price={data['price']}")
-    if data.get("available_from"):
-        components.append(f"available_from={data['available_from']}")
 
     if not components:
         return None
