@@ -1,10 +1,7 @@
-// src/services/apartments.js
 import { db } from "../firebase";
-import { mapFeature } from "../utils/searchConfig";
-
-import {
-  collection, getDocs, getDoc, doc, updateDoc,
-  arrayUnion, arrayRemove, query, where, limit, startAfter, orderBy
+import { mapFeature, PAGE_SIZE } from "../utils/searchConfig";
+import {collection, getDocs, getDoc, doc, updateDoc,
+  arrayRemove, query, where, limit, startAfter, orderBy, Timestamp
 } from "firebase/firestore";
 import { deleteDoc } from "firebase/firestore";
 import { getStorage, ref as storageRef, deleteObject } from "firebase/storage";
@@ -15,39 +12,34 @@ export async function fetchAllApartments() {
 }
 
 /**
- * פאג'ינציה גנרית עם מיון ברירת מחדל "חדש תחילה" (postedAt desc).
- * שימי לב: לכל מסמך חייב להיות השדה orderByField (למשל postedAt מסוג Timestamp).
  *
  * @param {Object} opts
  * @param {number} [opts.pageSize=24]
  * @param {import("firebase/firestore").QueryDocumentSnapshot|null} [opts.cursor=null]
- * @param {Object} [opts.filters={}] - תומך כרגע ב-minPrice/maxPrice (ניתן להרחיב)
+ * @param {Object} [opts.filters={}] 
  * @param {string} [opts.orderByField="indexed_at"]
  * @param {"asc"|"desc"} [opts.orderDir="desc"]
  * @returns {Promise<{items: any[], cursor: any|null, hasMore: boolean}>}
  */
 export async function fetchApartmentsPaged({
-  pageSize = 24,
+  pageSize = PAGE_SIZE,
   cursor = null,
   filters = {},
   orderByField = "indexed_at",
   orderDir = "desc",
 } = {}) {
-  // בסיס: collection + orderBy
   let qBase = query(
     collection(db, "apartments"),
     orderBy(orderByField, orderDir),
     limit(pageSize)
   );
 
-  // פילטרים בסיסיים (ניתן להרחיב בהמשך)
   const clauses = [];
   if (filters.minPrice != null && filters.minPrice !== "")
     clauses.push(where("price", ">=", Number(filters.minPrice)));
   if (filters.maxPrice != null && filters.maxPrice !== "")
     clauses.push(where("price", "<=", Number(filters.maxPrice)));
 
-  // אם יש פילטרים - חברי אותם לשאילתה
   if (clauses.length) {
     qBase = query(
       collection(db, "apartments"),
@@ -57,7 +49,6 @@ export async function fetchApartmentsPaged({
     );
   }
 
-  // פאג'ינציה לפי ה-cursor (מצופה להיות DocumentSnapshot מהעמוד הקודם)
   let q = qBase;
   if (cursor) {
     q = query(qBase, startAfter(cursor));
@@ -73,30 +64,12 @@ export async function fetchApartmentsPaged({
   };
 }
 
-/**
- * עטיפה נוחה ל-"חדש תחילה" בלי להעביר פרמטרים.
- * זה מה שכדאי להשתמש בו בדף הבית.
- */
-export async function fetchNewestApartmentsPaged(opts = {}) {
-  return fetchApartmentsPaged({ ...opts, orderByField: "indexed_at", orderDir: "desc" });
-}
-
 export async function fetchApartmentById(id) {
   const ref = doc(db, "apartments", id);
   const d = await getDoc(ref);
   return d.exists() ? { id: d.id, ...d.data() } : null;
 }
 
-export async function fetchUserFavorites(userId) {
-  const ref = doc(db, "users", userId);
-  const d = await getDoc(ref);
-  return d.exists() ? d.data().favorites || [] : [];
-}
-
-export async function toggleFavorite(userId, aptId, isFav) {
-  const ref = doc(db, "users", userId);
-  await updateDoc(ref, { favorites: isFav ? arrayRemove(aptId) : arrayUnion(aptId) });
-}
 
 export async function deleteApartment(id) {
   await deleteDoc(doc(db, "apartments", id));
@@ -106,7 +79,6 @@ export async function updateApartment(id, data) {
   await updateDoc(doc(db, "apartments", id), data);
 }
 
-/** מפענח נתיב קובץ מתוך קישור Storage ציבורי */
 function storagePathFromUrl(url) {
   try {
     const u = new URL(url);
@@ -118,9 +90,6 @@ function storagePathFromUrl(url) {
   }
 }
 
-/**
- * מסיר תמונה מדירת apartments וגם מוחק את האובייקט מ-Storage (אם אפשר).
- */
 export async function removeApartmentImage(apartmentId, url) {
   await updateDoc(doc(db, "apartments", apartmentId), { images: arrayRemove(url) });
 
@@ -135,69 +104,159 @@ export async function removeApartmentImage(apartmentId, url) {
   }
 }
 
+const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0,0,0,0);
+const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999);
+
 export async function fetchSearchApartments({
   filters = {},
-  sortField = "indexed_at",
-  sortDir = "desc",
+  orderByField = "indexed_at",
+  orderDir = "desc",
+  pageSize = 60,
+  cursor = null,
 } = {}) {
-  let base = collection(db, "apartments");
+  const base = collection(db, "apartments");
+  const s = filters || {};
   const clauses = [];
 
-  // ===== Equality =====
-  if (filters.category) {
-    clauses.push(where("category", "==", filters.category));
+  if (s.category) clauses.push(where("category", "==", s.category));
+
+  const allowUnknown = !!s.featuresIncludeUnknown;
+
+  if ((s.category === "שכירות" || s.category === "סאבלט") && s.apartmentMode && !allowUnknown) {
+    clauses.push(where("rental_scope", "==", s.apartmentMode === "whole" ? "דירה שלמה" : "שותף"));
   }
 
-  // apartmentMode רלוונטי רק לשכירות
-  if (filters.category === "שכירות" && filters.apartmentMode) {
-    const scope = filters.apartmentMode === "whole" ? "דירה שלמה" : "שותף";
-    clauses.push(where("rental_scope", "==", scope));
+  if (!allowUnknown) {
+    if (s.brokerage === "with") clauses.push(where("has_broker", "==", true));
+    if (s.brokerage === "without") clauses.push(where("has_broker", "==", false));
   }
 
-  // features: דורשים true בלבד (אם לא ביקשו לכלול לא-מצוין)
-  if (Array.isArray(filters.features) && filters.features.length > 0 && !filters.featuresIncludeUnknown) {
-    for (const key of filters.features.map(mapFeature).filter(Boolean)) {
-      clauses.push(where(key, "==", true));
+  if (Array.isArray(s.features) && s.features.length && !allowUnknown) {
+    for (const label of s.features) {
+      const key = mapFeature(label);
+      if (key) clauses.push(where(key, "==", true));
     }
   }
 
-  // neighborhoods: רק אם עד 10 ערכים (מגבלת IN)
-  if (Array.isArray(filters.neighborhoodsHe) &&
-      filters.neighborhoodsHe.length > 0 &&
-      filters.neighborhoodsHe.length <= 10) {
-    clauses.push(where("neighborhood", "in", filters.neighborhoodsHe));
-  }
+  const heList = Array.isArray(s.neighborhoodsHe) ? s.neighborhoodsHe.filter(Boolean) : [];
+  const useInForNeighborhoods = heList.length > 0 && heList.length <= 10;
+  if (useInForNeighborhoods) clauses.push(where("neighborhood", "in", heList));
 
-  // ===== Range (שדה אחד בלבד) =====
-  const rMin = filters.roomsMin !== "" && filters.roomsMin != null ? Number(filters.roomsMin) : null;
-  const rMax = filters.roomsMax !== "" && filters.roomsMax != null ? Number(filters.roomsMax) : null;
+  const hasDateRange = !!(s.entryDateFrom || s.entryDateTo);
+  const rMin = s.roomsMin !== "" && s.roomsMin != null ? Number(s.roomsMin) : null;
+  const rMax = s.roomsMax !== "" && s.roomsMax != null ? Number(s.roomsMax) : null;
 
   let rangeField = null;
-  if (rMin != null || rMax != null) {
+
+  if (hasDateRange) {
+    rangeField = "available_from";
+    if (s.entryDateFrom) {
+      clauses.push(where("available_from", ">=", Timestamp.fromDate(startOfDay(new Date(s.entryDateFrom)))));
+    }
+    if (s.entryDateTo) {
+      clauses.push(where("available_from", "<=", Timestamp.fromDate(endOfDay(new Date(s.entryDateTo)))));
+    }
+  } else if (rMin != null || rMax != null) {
     rangeField = "rooms";
     if (rMin != null) clauses.push(where("rooms", ">=", rMin));
     if (rMax != null) clauses.push(where("rooms", "<=", rMax));
-  } else if (filters.priceMax) {
+  } else if (s.priceMax) {
     rangeField = "price";
-    clauses.push(where("price", "<=", Number(filters.priceMax)));
+    clauses.push(where("price", "<=", Number(s.priceMax)));
   }
-  // available_from נשאר לקליינט
 
-  // ===== Build query =====
   let q = clauses.length ? query(base, ...clauses) : base;
 
-  // אם יש שדה אי-שוויון חייבים להזמין קודם לפיו.
-  // אם זה גם שדה המיון שנבחר – נזמין פעם אחת בלבד בכיוון הרצוי.
   if (rangeField) {
-    if (rangeField === sortField) {
-      q = query(q, orderBy(sortField, sortDir));
+    if (rangeField === orderByField) {
+      q = query(q, orderBy(orderByField, orderDir));
     } else {
-      q = query(q, orderBy(rangeField, "asc"), orderBy(sortField, sortDir));
+      q = query(q, orderBy(rangeField, "asc"), orderBy(orderByField, orderDir));
     }
   } else {
-    q = query(q, orderBy(sortField, sortDir));
+    q = query(q, orderBy(orderByField, orderDir));
   }
 
+  if (cursor) q = query(q, startAfter(cursor));
+  q = query(q, limit(pageSize));
+
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const docs = snap.docs;
+  let rows = docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (!useInForNeighborhoods && heList.length) {
+    rows = rows.filter(a => heList.includes((a.neighborhood || "").trim()));
   }
+
+  if (hasDateRange) {
+    if (s.priceMax) rows = rows.filter(a => a.price != null && a.price <= Number(s.priceMax));
+    if (rMin != null || rMax != null) {
+      rows = rows.filter(a => {
+        const r = a.rooms;
+        if (r == null) return false;
+        if (rMin != null && r < rMin) return false;
+        if (rMax != null && r > rMax) return false;
+        return true;
+      });
+    }
+  }
+
+  if (allowUnknown) {
+    if ((s.category === "שכירות" || s.category === "סאבלט") && s.apartmentMode) {
+      const needed = s.apartmentMode === "whole" ? "דירה שלמה" : "שותף";
+      rows = rows.filter(a => {
+        const scope = (a.rental_scope || "").trim();
+        return !scope || scope === needed;
+      });
+    }
+    if (s.brokerage) {
+      rows = rows.filter(a => {
+        const v = a.has_broker;
+        return s.brokerage === "with" ? (v === true || v == null) : (v === false || v == null);
+      });
+    }
+    if (Array.isArray(s.features) && s.features.length) {
+      rows = rows.filter(a =>
+        s.features.every(label => {
+          const key = mapFeature(label);
+          const v = key ? a[key] : undefined;
+          return v === true || v == null;
+        })
+      );
+    }
+  }
+
+  return {
+    items: rows,
+    cursor: docs.at(-1) || null,
+    hasMore: docs.length === pageSize,
+  };
+}
+
+export async function fetchSeedApartments({
+  category = null,       
+  pageSize = PAGE_SIZE,
+  cursor = null,         
+}) {
+  const col = collection(db, "apartments");
+
+  const constraints = [];
+  if (category) constraints.push(where("category", "==", category));
+  constraints.push(orderBy("indexed_at", "desc"));
+  if (cursor) constraints.push(startAfter(cursor));
+  constraints.push(limit(pageSize));
+
+  const q = query(col, ...constraints);
+  const snap = await getDocs(q);
+
+  const docs = snap.docs;
+  const items = docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  const nextCursor = docs.length ? docs[docs.length - 1] : null;
+  const hasMore = docs.length === pageSize;
+
+  return { items, cursor: nextCursor, hasMore };
+}
+
+
+

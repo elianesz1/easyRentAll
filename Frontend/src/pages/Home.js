@@ -1,4 +1,3 @@
-// Home.jsx
 import React, { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaSearch } from "react-icons/fa";
@@ -6,12 +5,12 @@ import Layout from "../components/Layout";
 import ApartmentCard from "../components/ApartmentCard";
 import useAuth from "../hooks/useAuth";
 import useFavorites from "../hooks/useFavorites";
-import { SORTS, roomOptions, SORT_TO_ORDER } from "../utils/searchConfig";
+import { SORTS, roomOptions, SORT_TO_ORDER} from "../utils/searchConfig";
 import usePagedApartments from "../hooks/usePagedApartments";
 import useInfiniteObserver from "../hooks/useInfiniteObserver";
+import SortSelect from "../components/SortSelect";
 
 
-// UI: “הכל” + כל האופציות מה-config + 5+
 const ROOMS_UI = [
   { value: "", label: "הכל" },
   ...roomOptions,
@@ -25,7 +24,6 @@ const Home = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
 
-  // ----- מיון: אתחול מה-localStorage, שמירה אוטומטית -----
   const [sortBy, setSortBy] = useState(() => {
     try {
       const saved = localStorage.getItem(SORT_STORAGE_KEY);
@@ -39,7 +37,6 @@ const Home = () => {
 
   const sortCfg = SORT_TO_ORDER[sortBy] || SORT_TO_ORDER["newest"];
 
-  // טעינה מדורגת מהשרת לפי המיון 
   const {
     items: apartments,
     hasMore,
@@ -47,9 +44,9 @@ const Home = () => {
     loadingMore,
     loadMore,
   } = usePagedApartments({
-    pageSize: 24,
     orderByField: sortCfg.field,
     orderDir: sortCfg.dir,
+    storageKey: "home-pages",
   });
 
   const validRoomValues = new Set(ROOMS_UI.map(o => String(o.value)));
@@ -65,7 +62,6 @@ const Home = () => {
 
   const { favorites, onToggleFavorite } = useFavorites(user);
 
-  // סינון קליינטי לחדרים
   const filtered = useMemo(() => {
     let arr = apartments;
     if (roomsFilter) {
@@ -80,7 +76,7 @@ const Home = () => {
   }, [apartments, roomsFilter]);
 
   const sentinelRef = useInfiniteObserver(() => {
-    if (hasMore && !loadingMore) loadMore();
+    if (hasMore && !loadingMore && !initialLoading) loadMore();
   });
 
   const loading = authLoading || initialLoading;
@@ -107,22 +103,9 @@ const Home = () => {
         {/* Sort & filter */}
         <section className="max-w-7xl mx-auto -mt-4 sm:-mt-6 mb-4 px-4">
           <div className="flex flex-wrap items-center gap-3">
-            {/* מיון */}
-            <div className="flex flex-wrap items-center gap-2 md:gap-3">
-              <label htmlFor="sort" className="text-sm text-gray-600">מיין לפי:</label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="min-w-[220px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm hover:border-gray-400"
-              >
-                {SORTS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* מס׳ חדרים */}
+            {/* SORT */}
+            <SortSelect id="home-sort" value={sortBy} onChange={setSortBy} className="flex flex-wrap items-center gap-2 md:gap-3" />
+            {/* rooms */}
             <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <label htmlFor="rooms" className="text-sm text-gray-600">מספר חדרים:</label>
               <select

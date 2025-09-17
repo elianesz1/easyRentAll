@@ -1,11 +1,10 @@
+export const PAGE_SIZE = 150;
 
-// FEATURES
 export const FEATURE_KEYS = {
   "חיות מחמד": "pets_allowed",
   "מעלית": "has_elevator",
   "מרפסת": "has_balcony",
   "חניה": "has_parking",
-  "תיווך": "has_broker",
   "ממד": "has_safe_room",
   'ממ"ד': "has_safe_room",
 };
@@ -15,6 +14,9 @@ export function mapFeature(label) {
 }
 
 export const ROOMS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 5];
+
+export const FEATURE_LABELS = ["חיות מחמד", "מעלית", "מרפסת", "חניה", "ממד"];
+
 
 export const roomOptions = ROOMS.map((n) => ({
   value: String(n),

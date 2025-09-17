@@ -1,4 +1,3 @@
-// src/hooks/useInfiniteObserver.js
 import { useEffect, useRef } from "react";
 
 export default function useInfiniteObserver(onVisible, { root = null, rootMargin = "0px", threshold = 0.1 } = {}) {

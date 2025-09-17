@@ -69,7 +69,7 @@ export default function NewGalleryPreview({
         buildSrcForWidth={buildSrcForWidth}
         sizes={sizes}
       />
-      {/* Rest pic */}
+      {/* Rest of the pic */}
       {shown.slice(1).map((url, i) => {
         const absoluteIndex = i + 1; 
         const isLastTile = i === shown.slice(1).length - 1 && more > 0;
