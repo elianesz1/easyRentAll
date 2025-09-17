@@ -4,7 +4,7 @@ const { chromium } = require("playwright");
 const { runConvertPosts, getRandomGroupUrl } = require("./utils");
 const { scrapePosts } = require("./facebook-func");
 
-const INTERVAL_MINUTES = Number(process.env.INTERVAL_MINUTES ?? 30);
+const INTERVAL_MINUTES = 30;
 let isRunning = false;
 
 async function runJob() {
@@ -21,7 +21,7 @@ async function runJob() {
 
     try {
         console.log(`[${new Date().toLocaleString()}] התחלת ריצה...`);
-
+        //If mode is server run on server environment 
         if ((process.env.MODE || 'local') === 'server') {
             const headless = process.env.HEADLESS !== 'false';
             const launchArgs = (process.env.PLAYWRIGHT_ARGS || '--no-sandbox --disable-dev-shm-usage')
@@ -29,7 +29,7 @@ async function runJob() {
 
             browser = await chromium.launch({ headless, args: launchArgs });
             context = await browser.newContext({ storageState: process.env.STORAGE_STATE });
-        } else {
+        } else { //Otherwise, we are in local/development mode
             const userDataDir = 'C:\\Users\\elian\\AppData\\Local\\Google\\Chrome\\User Data\\MyPlaywrightProfile';
             context = await chromium.launchPersistentContext(userDataDir, {
                 headless: false,
