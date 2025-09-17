@@ -1,11 +1,11 @@
-// src/hooks/usePagedApartments.js
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchApartmentsPaged } from "../services/apartments";
-
+import { PAGE_SIZE } from "../utils/searchConfig";
+import { mergeUniqueById } from "../utils/searchEngine";
 
 export default function usePagedApartments({
-  pageSize = 24,
-  storageKey = "home-pages",
+  pageSize = PAGE_SIZE,
+  storageKey = null,
   orderByField = "indexed_at",
   orderDir = "desc", 
 } = {}) {
@@ -15,13 +15,15 @@ export default function usePagedApartments({
   const [initialLoading, setInitialLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pagesLoaded, setPagesLoaded] = useState(0);
-  const guard = useRef(false);
+  const key = `${pageSize}|${orderByField}|${orderDir}`;
+  const initKeyRef = useRef(null);
+  const inFlightRef = useRef(false);
 
   const loadPage = useCallback(
     async (cur = null, merge = true) => {
       const { items: page, cursor: next, hasMore: hm } =
         await fetchApartmentsPaged({ pageSize, cursor: cur, orderByField, orderDir });
-      setItems(prev => (merge ? [...prev, ...page] : page));
+      setItems(prev => (merge ? mergeUniqueById(prev, page) : page));
       setCursor(next);
       setHasMore(hm);
       setPagesLoaded(prev => prev + 1);
@@ -31,15 +33,18 @@ export default function usePagedApartments({
   );
 
   useEffect(() => {
+    if (initKeyRef.current === key) return; 
+    initKeyRef.current = key;
     (async () => {
-      guard.current = true;
       setItems([]);
       setCursor(null);
       setHasMore(true);
       setPagesLoaded(0);
       setInitialLoading(true);
       try {
-        const prefetch = Math.max(1, Number(sessionStorage.getItem(storageKey) || 1));
+       const prefetch = (typeof storageKey === "string" && storageKey.length > 0)
+          ? Math.max(1, Number(sessionStorage.getItem(storageKey) || 1))
+             : 1;
         let next = null;
         for (let i = 0; i < prefetch; i++) {
           const res = await fetchApartmentsPaged({
@@ -48,7 +53,7 @@ export default function usePagedApartments({
             orderByField,
             orderDir,
           });
-          setItems(prev => (i ? [...prev, ...res.items] : res.items));
+          setItems(prev => (i ? mergeUniqueById(prev, res.items) : res.items));
           next = res.cursor;
           setCursor(res.cursor);
           setHasMore(res.hasMore);
@@ -57,24 +62,26 @@ export default function usePagedApartments({
         }
       } finally {
         setInitialLoading(false);
-        guard.current = false;
       }
     })();
-  }, [pageSize, storageKey, orderByField, orderDir]);
+  }, [key, storageKey]);
 
-  const loadMore = useCallback(async () => {
-    if (!hasMore || !cursor || loadingMore) return;
+    const loadMore = useCallback(async () => {
+     if (!hasMore || !cursor || loadingMore || initialLoading || inFlightRef.current) return;
+      inFlightRef.current = true;
     setLoadingMore(true);
     try {
       await loadPage(cursor, true);
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, cursor, loadingMore, loadPage]);
+  }, [hasMore, cursor, loadingMore, initialLoading, loadPage]);
 
   useEffect(() => {
     return () => {
-      sessionStorage.setItem(storageKey, String(pagesLoaded || 1));
+      if (typeof storageKey === "string" && storageKey.length > 0) {
+     sessionStorage.setItem(storageKey, String(pagesLoaded || 1));
+   }
     };
   }, [pagesLoaded, storageKey]);
 

@@ -1,20 +1,30 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from "react-select";
-import { FaDoorOpen, FaKey, FaMoneyBillWave, FaDog, FaFileContract, FaSun, FaParking, FaMapMarkerAlt, FaHome, FaUsers, FaCalendarAlt } from "react-icons/fa";
-import { FaElevator } from "react-icons/fa6";
+import { FaDoorOpen, FaKey, FaMoneyBillWave, FaDog,
+   FaSun, FaParking, FaMapMarkerAlt, FaHome, FaUsers, FaCalendarAlt } from "react-icons/fa";
+import { FaElevator, FaHandshakeSimpleSlash, FaHandshakeSimple  } from "react-icons/fa6";
 import Layout from "../components/Layout";
 import { NEIGHBORHOODS_HE } from "../utils/neighborhoods";
-import { roomOptions } from "../utils/searchConfig";
+import { roomOptions, FEATURE_LABELS} from "../utils/searchConfig";
 import { encodeSearchParams } from "../utils/searchParams";
+
+const FEATURE_ICONS = {
+  "חיות מחמד": FaDog,
+  "מעלית": FaElevator,
+  "מרפסת": FaSun,
+  "חניה": FaParking,
+  "ממד": FaMapMarkerAlt,
+};
+
 
 const getSliderCfg = (cat) => {
   if (cat === "מכירה") return { min: 100000, max: 20000000, step: 10000 };
-  if (cat === "שכירות" || cat === "סאבלט") return { min: 1000, max: 20000, step: 100 };
-  return { min: 0, max: 0, step: 1 };
+  return { min: 1000, max: 20000, step: 100 };
 };
+
 
 const SearchPage = () => {
   const navigate = useNavigate();
@@ -23,11 +33,19 @@ const SearchPage = () => {
   const [priceMax, setPriceMax] = useState(null);
   const sliderCfg = useMemo(() => getSliderCfg(category), [category]);
   const sliderMid = useMemo(() => {
-    if (!category) return 0;
-    const { min, max, step } = sliderCfg;
-    const mid = (min + max) / 2;
-    return Math.round(mid / step) * step;
-  }, [category, sliderCfg]);
+  const { max, step } = sliderCfg;
+  const mid = (max) / 2;
+  return Math.round(mid / step) * step;
+}, [sliderCfg]);
+
+  useEffect(() => {
+    if (category === "מכירה") setApartmentMode("whole");
+  }, [category]);
+
+  useEffect(() => {
+  setPriceMax(sliderMid);
+}, [category, sliderMid]);
+
 
   const [selectedNeighborhoodsHe, setSelectedNeighborhoodsHe] = useState([]); 
   const [roomsMin, setRoomsMin] = useState("");
@@ -37,6 +55,9 @@ const SearchPage = () => {
   const [selectedFeatures, setSelectedFeatures] = useState([]);
   const [apartmentMode, setApartmentMode] = useState("");
   const [includeUnknownFeatures, setIncludeUnknownFeatures] = useState(false);
+  const [brokerage, setBrokerage] = useState("");
+  const prevCategoryRef = useRef(category);
+
 
   useEffect(() => {
     const s = location.state?.searchData;
@@ -55,6 +76,9 @@ const SearchPage = () => {
     setSelectedFeatures(Array.isArray(s.features) ? s.features : []);
     setIncludeUnknownFeatures(!!s.featuresIncludeUnknown);
     setApartmentMode(s.apartmentMode ?? "");
+    setBrokerage(s.brokerage ?? "");
+    
+
   }, [location.state]);
 
   useEffect(() => {
@@ -62,24 +86,24 @@ const SearchPage = () => {
     setPriceMax(sliderMid);
   }, [category, sliderMid]);
 
+  useEffect(() => {
+  const prev = prevCategoryRef.current;
+
+  if (category === "מכירה") {
+    setApartmentMode("whole");
+  } else if (prev === "מכירה" && (category === "שכירות" || category === "סאבלט")) {
+    setApartmentMode("");
+  }
+
+  prevCategoryRef.current = category;
+}, [category]);
+
   const toggleFeature = (feature) => {
     setSelectedFeatures((prev) => (prev.includes(feature) ? prev.filter((f) => f !== feature) : [...prev, feature]));
   };
 
-  const renderFeatureButton = (feature, icon) => (
-    <button
-      key={feature}
-      type="button"
-      onClick={() => toggleFeature(feature)}
-      className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border text-xs sm:text-sm text-center transition
-          ${selectedFeatures.includes(feature)
-          ? "border-[#5171b7] text-[#5171b7] bg-white"
-          : "border-gray-300 text-gray-600 hover:border-gray-400"}`}
-    >
-      {icon}
-      {feature}
-    </button>
-  );
+  const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const endOfDay   = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
 
   const handleSearch = () => {
   const normRoomsMin = roomsMin !== "" ? Number(roomsMin) : "";
@@ -87,9 +111,11 @@ const SearchPage = () => {
   let [rMin, rMax] = [normRoomsMin, normRoomsMax];
   if (rMin !== "" && rMax !== "" && rMin > rMax) [rMin, rMax] = [rMax, rMin];
 
-  let dFrom = entryDateFrom ? new Date(entryDateFrom) : null;
-  let dTo   = entryDateTo   ? new Date(entryDateTo)   : null;
+  let dFrom = entryDateFrom ? startOfDay(entryDateFrom) : null;
+  let dTo   = entryDateTo   ? endOfDay(entryDateTo)     : null;
   if (dFrom && dTo && dFrom > dTo) [dFrom, dTo] = [dTo, dFrom];
+  
+  const mode = category === "מכירה" ? "whole" : (apartmentMode || "");
 
   const searchData = {
     category,
@@ -99,9 +125,10 @@ const SearchPage = () => {
     roomsMax: rMax === "" ? "" : rMax,
     entryDateFrom: dFrom ? dFrom.toISOString() : null,
     entryDateTo:   dTo   ? dTo.toISOString()   : null,
-    apartmentMode: apartmentMode || "",
+    apartmentMode: mode, 
     features: selectedFeatures,
     featuresIncludeUnknown: includeUnknownFeatures,
+    brokerage,
   };
 
   const searchStr = encodeSearchParams({ filters: searchData, sortBy: "newest" }).search;
@@ -114,6 +141,7 @@ const SearchPage = () => {
     () => neighborhoodOptions.filter((opt) => selectedNeighborhoodsHe.includes(opt.value)),
     [neighborhoodOptions, selectedNeighborhoodsHe]
   );
+
 
   return (
     <Layout>
@@ -144,6 +172,25 @@ const SearchPage = () => {
             </div>
           </div>
 
+         {/* price */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold">מחיר</label>
+              <span className="text-sm text-gray-700">
+                ₪{(priceMax ?? sliderMid).toLocaleString("he-IL")}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={sliderCfg.min}
+              max={sliderCfg.max}
+              step={sliderCfg.step}
+              value={priceMax ?? sliderMid}
+              onChange={(e) => setPriceMax(Number(e.target.value))}
+              className="w-full accent-[#5171b7] mt-1"
+            />
+          </div>
+
           {/* Neighborhoods */}
           <div className="mb-6">
             <label className="block text-right font-semibold mb-2">שכונות</label>
@@ -165,35 +212,9 @@ const SearchPage = () => {
             />
           </div>
 
-          {/* price */}
-          <div className="mb-6">
-            <label className="block text-right font-semibold mb-2">
-              טווח מחירים (מקסימלי)
-              {category ? (category === "מכירה" ? " — מכירה" : " — שכירות/סאבלט") : ""}
-            </label>
-
-            {category && (
-              <>
-                <div className="flex justify-end mb-1 text-sm text-gray-700">
-                  ₪{(priceMax ?? sliderMid).toLocaleString("he-IL")}
-                </div>
-
-                <input
-                  type="range"
-                  min={sliderCfg.min}
-                  max={sliderCfg.max}
-                  step={sliderCfg.step}
-                  value={priceMax ?? sliderMid}
-                  onChange={(e) => setPriceMax(Number(e.target.value))}
-                  className="w-full accent-[#5171b7]"
-                />
-              </>
-            )}
-          </div>
-
           {/* rooms */}
           <div className="mb-6">
-            <label className="block text-right font-semibold mb-2">מספר חדרים (טווח)</label>
+            <label className="block text-right font-semibold mb-2">מספר חדרים</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Select
                 options={roomOptions}
@@ -222,7 +243,7 @@ const SearchPage = () => {
 
           {/* entry date */}
           <div className="mb-6">
-            <label className="block text-right font-semibold mb-2">תאריך כניסה (טווח)</label>
+            <label className="block text-right font-semibold mb-2">תאריך כניסה</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="relative w-44">
                 {!entryDateFrom && <FaCalendarAlt className="absolute right-3 top-3 text-gray-400" />}
@@ -250,20 +271,52 @@ const SearchPage = () => {
           </div>
 
           {/* whole or shared */}
-          {(category === "שכירות" || category === "סאבלט") && (
+          <div className="mb-8">
+            <label className="block text-right font-semibold mb-3 text-lg">מבנה הדירה</label>
+            <div className="flex flex-wrap justify-end gap-3 sm:gap-4 flex-row-reverse">
+              {[
+                { label: "שלמה", value: "whole", icon: <FaHome className="text-xl sm:text-2xl" /> },
+                { label: "דירה עם שותפים", value: "shared", icon: <FaUsers className="text-xl sm:text-2xl" /> },
+              ].map(({ label, value, icon }) => {
+                const isSale = category === "מכירה";
+                const disabled = isSale && value === "shared";
+                const selected = isSale ? value === "whole" : apartmentMode === value;
+
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => { if (!disabled) setApartmentMode(value); }}
+                    disabled={disabled}
+                    className={`w-full sm:w-36 h-20 sm:h-24 rounded-xl border-2 flex flex-col items-center justify-center transition
+                      ${selected ? "border-[#5171b7] text-[#5171b7]" : "border-gray-300 text-gray-600 hover:border-gray-400"}
+                      ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                    title={label}
+                    aria-pressed={selected}
+                  >
+                    {icon}
+                    <span className="mt-2 text-xs sm:text-sm font-medium">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+
+          {/* brokerage */}
             <div className="mb-8">
-              <label className="block text-right font-semibold mb-3 text-lg">מבנה הדירה</label>
+              <label className="block text-right font-semibold mb-3 text-lg">תיווך</label>
               <div className="flex flex-wrap justify-end gap-3 sm:gap-4 flex-row-reverse">
                 {[
-                  { label: "שלמה", value: "whole", icon: <FaHome className="text-xl sm:text-2xl" /> },
-                  { label: "דירה עם שותפים", value: "shared", icon: <FaUsers className="text-xl sm:text-2xl" /> },
+                  { label: "עם תיווך", value: "with",    icon: <FaHandshakeSimple className="text-2xl" /> },
+                  { label: "ללא תיווך", value: "without", icon: <FaHandshakeSimpleSlash className="text-2xl" /> },
                 ].map(({ label, value, icon }) => (
                   <button
                     key={value}
                     type="button"
-                    onClick={() => setApartmentMode(value)}
+                    onClick={() => setBrokerage(value)}
                     className={`w-full sm:w-36 h-20 sm:h-24 rounded-xl border-2 flex flex-col items-center justify-center transition
-                    ${apartmentMode === value ? "border-[#5171b7] text-[#5171b7]" : "border-gray-300 text-gray-600 hover:border-gray-400"}`}
+                      ${brokerage === value ? "border-[#5171b7] text-[#5171b7]" : "border-gray-300 text-gray-600 hover:border-gray-400"}`}
                   >
                     {icon}
                     <span className="mt-2 text-xs sm:text-sm font-medium">{label}</span>
@@ -271,32 +324,50 @@ const SearchPage = () => {
                 ))}
               </div>
             </div>
-          )}
 
-          {/* more features */}
-          <div className="mb-10">
-            <label className="block text-right font-semibold mb-2">מסנני חיפוש נוספים</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {renderFeatureButton("חיות מחמד", <FaDog />)}
-              {renderFeatureButton("מעלית", <FaElevator />)}
-              {renderFeatureButton("מרפסת", <FaSun />)}
-              {renderFeatureButton("חניה", <FaParking />)}
-              {renderFeatureButton("תיווך", <FaFileContract />)}
-              {renderFeatureButton("ממד", <FaMapMarkerAlt />)}
-            </div>
-         
-            {/* check box */}
-              <label className="mt-3 flex items-center gap-3 text-base sm:text-[15px] text-gray-800 py-2">
-                <input
-                  type="checkbox"
-                  checked={includeUnknownFeatures}
-                  onChange={(e) => setIncludeUnknownFeatures(e.target.checked)}
-                  className="accent-[#5171b7] w-5 h-5"  
-                />
-                <span className="font-medium">הצג גם דירות שלא צוין לגביהן המסנן הנבחר</span>
-              </label>
+
+       {/* more features */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-right font-semibold text-lg">מסנני חיפוש נוספים</label>
           </div>
-            
+
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            {FEATURE_LABELS.map((label) => {
+              const Icon = FEATURE_ICONS[label];
+              const active = selectedFeatures.includes(label);
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => toggleFeature(label)}
+                  aria-pressed={active}
+                  className={`flex items-center justify-center gap-2 h-12 rounded-full border px-4 text-sm font-medium transition
+                    ${active
+                      ? "border-[#5171b7] text-[#2f3e7c] bg-[#f6f8ff] shadow-sm"
+                      : "border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50"}`}
+                  title={label}
+                >
+                  {Icon ? <Icon className="text-base sm:text-lg" /> : null}
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* checkbox */}
+          <label className="mt-4 flex items-center gap-3 text-base sm:text-[15px] text-gray-800 py-2">
+            <input
+              type="checkbox"
+              checked={includeUnknownFeatures}
+              onChange={(e) => setIncludeUnknownFeatures(e.target.checked)}
+              className="accent-[#5171b7] w-5 h-5"
+            />
+            <span className="font-medium">הצג גם דירות שלא צוין לגביהן המסנן הנבחר</span>
+          </label>
+        </div>
+
+
           {/* show results + clearAll buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={handleSearch} className="flex-1 text-lg py-3 rounded-xl shadow transition bg-[#5171b7] hover:bg-[#3f5ea4] text-white">
@@ -314,6 +385,9 @@ const SearchPage = () => {
                 setEntryDateTo(null);
                 setSelectedFeatures([]);
                 setApartmentMode("");
+                setBrokerage("");
+                setIncludeUnknownFeatures(false);
+
               }}
               className="px-5 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50"
             >

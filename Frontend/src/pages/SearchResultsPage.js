@@ -4,20 +4,14 @@ import Layout from "../components/Layout";
 import ApartmentCard from "../components/ApartmentCard";
 import useAuth from "../hooks/useAuth";
 import useFavorites from "../hooks/useFavorites";
-import useApartments from "../hooks/useApartments";
-import { SORTS, mapFeature } from "../utils/searchConfig";
 import { encodeSearchParams, decodeSearchParams } from "../utils/searchParams";
+import { formatDate } from "../utils/format";
+import SortSelect from "../components/SortSelect";
+import { applyFilters } from "../utils/searchEngine";
+import usePagedApartments from "../hooks/usePagedApartments";
+import useInfiniteObserver from "../hooks/useInfiniteObserver";
+import { SORT_TO_ORDER } from "../utils/searchConfig";
 
-
-const fmtDate = (iso) => {
-  try {
-    const d = new Date(iso);
-    if (!isFinite(d)) return null;
-    return d.toLocaleDateString("he-IL");
-  } catch {
-    return null;
-  }
-};
 
 export default function SearchResultsPage() {
   const location = useLocation();
@@ -25,125 +19,36 @@ export default function SearchResultsPage() {
   const { filters: urlFilters, sortBy: urlSort } = decodeSearchParams(location.search);
   const { searchData: initialSearchData } = location.state || {};
   const [filters, setFilters] = useState(() => initialSearchData || urlFilters || {});
+  const [sortBy, setSortBy] = useState(urlSort || "newest");
+  const sortCfg = SORT_TO_ORDER[sortBy] || SORT_TO_ORDER["newest"];
+  const {items,hasMore,initialLoading,loadingMore,loadMore,} = 
+    usePagedApartments({orderByField: sortCfg.field, orderDir: sortCfg.dir, storageKey: null ,});
+  const sentinelRef = useInfiniteObserver(() => {
+  if (hasMore && !loadingMore && !initialLoading)
+     loadMore(); }, { rootMargin: "300px" });
+
   const { user } = useAuth();
   const { favorites, onToggleFavorite } = useFavorites(user);
-  const { apartments, loading } = useApartments();
-  const [sortBy, setSortBy] = useState(urlSort || "newest");
-  
+
+  useEffect(() => {
+  sessionStorage.setItem("results-pages", "1");
+}, []);
+
+  // accept state from Search page (when navigating back)
   useEffect(() => {
     if (initialSearchData) setFilters(initialSearchData);
   }, [initialSearchData]);
 
- useEffect(() => {
-   if (location.pathname !== "/results") return;
-   const { search } = encodeSearchParams({ filters, sortBy });
-   if (search === location.search) return;
-   navigate({ pathname: location.pathname, search }, { replace: true, state: { searchData: filters } });
- }, [filters, sortBy, location.pathname, location.search, navigate]);
+  useEffect(() => {
+    if (location.pathname !== "/results") return;
+    const { search } = encodeSearchParams({ filters, sortBy });
+    if (search === location.search) return;
+    navigate({ pathname: location.pathname, search }, { replace: true, state: { searchData: filters } });
+  }, [filters, sortBy, location.pathname, location.search, navigate]);
 
-  const filtered = useMemo(() => {
-    const s = filters || {};
-    const heList = Array.isArray(s.neighborhoodsHe) ? s.neighborhoodsHe : [];
-    const rMin = s.roomsMin !== "" && s.roomsMin != null ? Number(s.roomsMin) : null;
-    const rMax = s.roomsMax !== "" && s.roomsMax != null ? Number(s.roomsMax) : null;
-    const dFrom = s.entryDateFrom ? new Date(s.entryDateFrom) : null;
-    const dTo = s.entryDateTo ? new Date(s.entryDateTo) : null;
-    const allowUnknown = !!s.featuresIncludeUnknown;
+  const clientFiltered = useMemo(() => applyFilters(items, filters), [items, filters]);
 
-    return apartments.filter((apt) => {
-      if (s.category && apt.category !== s.category) return false;
-
-      if (heList.length > 0) {
-        const heName = (apt.neighborhood || "").trim();
-        if (!heList.includes(heName)) return false;
-      }
-
-      if (s.priceMax) {
-        const p = apt.price;
-        if (p != null && p > Number(s.priceMax)) return false;
-      }
-
-      if (rMin != null || rMax != null) {
-        const r = apt.rooms;
-        if (r == null) return false;
-        if (rMin != null && r < rMin) return false;
-        if (rMax != null && r > rMax) return false;
-      }
-
-      if (dFrom || dTo) {
-        const raw = apt.available_from;
-
-        if (!raw) {
-          if (!allowUnknown) return false;  
-        } else {
-          const aptDate = new Date(raw);
-          if (!isFinite(aptDate)) {
-            if (!allowUnknown) return false; 
-          } else {
-            if (dFrom && aptDate < dFrom) return false;
-            if (dTo && aptDate > dTo) return false;
-          }
-        }
-      }
-
-
-      if (s.apartmentMode && s.category === "שכירות") {
-        const scope = (apt.rental_scope || "").trim();
-        if (s.apartmentMode === "whole" && scope !== "דירה שלמה") return false;
-        if (s.apartmentMode === "shared" && scope !== "שותף") return false;
-      }
-
-      if (Array.isArray(s.features) && s.features.length > 0) {
-        for (let label of s.features) {
-          const key = mapFeature(label);
-          if (!key) continue;
-          const val = apt[key];
-          if (allowUnknown) {
-            if (val === false) return false;
-          } else {
-            if (val !== true) return false;
-          }
-        }
-      }
-
-      return true;
-    });
-  }, [apartments, filters]);
-
-  // Sort (client-side)
-const sorted = useMemo(() => {
-  const arr = [...filtered];
-
-  switch (sortBy) {
-    case "price-asc":
-      arr.sort((a, b) => (a.price ?? Number.POSITIVE_INFINITY) - (b.price ?? Number.POSITIVE_INFINITY));
-      break;
-
-    case "price-desc":
-      arr.sort((a, b) => (b.price ?? Number.NEGATIVE_INFINITY) - (a.price ?? Number.NEGATIVE_INFINITY));
-      break;
-
-    case "oldest":
-      arr.sort((a, b) => {
-        const am = a.indexed_at?.toMillis?.() ?? 0;
-        const bm = b.indexed_at?.toMillis?.() ?? 0;
-        return am - bm;
-      });
-      break;
-
-    case "newest":
-    default:
-      arr.sort((a, b) => {
-        const am = a.indexed_at?.toMillis?.() ?? 0;
-        const bm = b.indexed_at?.toMillis?.() ?? 0;
-        return bm - am;
-      });
-  }
-
-  return arr;
-}, [filtered, sortBy]);
-
-
+  /* Chip actions */
   const removeNeighborhood = (he) =>
     setFilters((f) => ({ ...f, neighborhoodsHe: (f.neighborhoodsHe || []).filter((x) => x !== he) }));
   const clearRoomsMin = () => setFilters((f) => ({ ...f, roomsMin: "" }));
@@ -153,9 +58,9 @@ const sorted = useMemo(() => {
   const clearPriceMax = () => setFilters((f) => ({ ...f, priceMax: "" }));
   const clearMode = () => setFilters((f) => ({ ...f, apartmentMode: "" }));
   const clearCategory = () => setFilters((f) => ({ ...f, category: "" }));
+  const clearBrokerage = () => setFilters((f) => ({ ...f, brokerage: "" }));
   const removeFeature = (label) =>
     setFilters((f) => ({ ...f, features: (f.features || []).filter((x) => x !== label) }));
-
   const clearAll = () =>
     setFilters((f) => ({
       category: f.category || "",
@@ -167,8 +72,11 @@ const sorted = useMemo(() => {
       entryDateTo: null,
       apartmentMode: "",
       features: [],
+      brokerage: "",
+      featuresIncludeUnknown: false,
     }));
 
+  /* Chips UI */
   const Chips = () => {
     const chips = [];
     if (filters.category)
@@ -184,13 +92,17 @@ const sorted = useMemo(() => {
     if (filters.roomsMax !== "" && filters.roomsMax != null)
       chips.push({ key: "rmax", label: `מקס' חדרים: ${filters.roomsMax}`, onClose: clearRoomsMax });
     if (filters.entryDateFrom)
-      chips.push({ key: "dfrom", label: `כניסה מ־ ${fmtDate(filters.entryDateFrom)}`, onClose: clearDateFrom });
+      chips.push({ key: "dfrom", label: `כניסה מ־ ${formatDate(filters.entryDateFrom)}`, onClose: clearDateFrom });
     if (filters.entryDateTo)
-      chips.push({ key: "dto", label: `כניסה עד ${fmtDate(filters.entryDateTo)}`, onClose: clearDateTo });
+      chips.push({ key: "dto", label: `כניסה עד ${formatDate(filters.entryDateTo)}`, onClose: clearDateTo });
     if (filters.apartmentMode === "whole")
       chips.push({ key: "mode", label: "דירה שלמה", onClose: clearMode });
     else if (filters.apartmentMode === "shared")
       chips.push({ key: "mode", label: "דירה עם שותפים", onClose: clearMode });
+    if (filters.brokerage === "with")
+      chips.push({ key: "broker", label: "עם תיווך", onClose: clearBrokerage });
+    else if (filters.brokerage === "without")
+      chips.push({ key: "broker", label: "ללא תיווך", onClose: clearBrokerage });
     if (filters.featuresIncludeUnknown) {
       chips.push({
         key: "fnull",
@@ -236,10 +148,10 @@ const sorted = useMemo(() => {
     );
   };
 
+  /* Render */
   return (
     <Layout>
       <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 sm:px-6 py-6 sm:py-8" dir="rtl">
-        {/* back to search */}
         <div className="max-w-7xl mx-auto flex justify-end mb-4">
           <button
             onClick={() => navigate("/search", { state: { searchData: filters } })}
@@ -250,52 +162,40 @@ const sorted = useMemo(() => {
         </div>
 
         <div className="max-w-7xl mx-auto">
-          {/* Title + count aprtments */}
+          {/* Title + count */}
           <h1 className="text-2xl font-bold text-right">תוצאות החיפוש</h1>
-          <p className="text-sm text-gray-500 text-right mt-1 mb-3">
-            {!loading ? `נמצאו ${sorted.length} דירות` : ""}
-          </p>
-
+          
           {/* sort + filters */}
           <div className="flex items-center flex-wrap gap-2 mb-4">
             <div className="flex-1">
               <Chips />
             </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <label htmlFor="sort" className="text-sm text-gray-600">מיין לפי:</label>
-              <select
-                id="sort"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-m shadow-sm hover:border-gray-400"
-              >
-                {SORTS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
+            <SortSelect id="home-sort" value={sortBy} onChange={setSortBy} className="flex flex-wrap items-center gap-2 md:gap-3" />
           </div>
 
-          {loading ? (
+          {initialLoading ? (
             <div className="py-16 text-center text-gray-500">טוען…</div>
-          ) : sorted.length === 0 ? (
+          ) :  clientFiltered.length === 0 ? (
             <p className="text-right text-gray-600">לא נמצאו דירות מתאימות.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
-              {sorted.map((apartment) => (
-                <ApartmentCard
-                  key={apartment.id}
-                  apartment={apartment}
-                  isFavorite={favorites.includes(apartment.id)}
-                  onToggleFavorite={() => onToggleFavorite(apartment.id)}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8">
+                {clientFiltered.map((apartment) => (
+                  <ApartmentCard
+                    key={apartment.id}
+                    apartment={apartment}
+                    isFavorite={favorites.includes(apartment.id)}
+                    onToggleFavorite={() => onToggleFavorite(apartment.id)}
+                  />
+                ))}
+              </div>
+
+             {loadingMore && <div className="mt-6 text-center text-gray-500">טוען…</div>}
+             {hasMore && <div ref={sentinelRef} className="h-8" />}
+            </>
           )}
         </div>
       </div>
     </Layout>
   );
 }
-

@@ -1,40 +1,32 @@
-import React from "react";
 import { useNavigate } from "react-router-dom";
-import { FaHeart, FaRegHeart, FaTrashAlt } from "react-icons/fa";
+import { FaTrashAlt } from "react-icons/fa";
 import ImageCarousel from "./ImageCarousel";
 import defaultPic from "../assets/defaultPic.png";
 import { formatPrice } from "../utils/format";
 import PropTypes from "prop-types";
 import { useAdmin } from "../contexts/AdminContext";
 import { deleteApartment } from "../services/apartments";
-import { useEffect, useState } from "react"; 
 import useAuth from "../hooks/useAuth";
 import { toast } from "react-hot-toast"; 
+import FavoriteButton from "./FavoriteButton";
 
 export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite }) {
   const navigate = useNavigate();
   const { isAdmin, editMode } = useAdmin();
   const { user } = useAuth();
-  const [localFav, setLocalFav] = useState(!!isFavorite);
-  useEffect(() => setLocalFav(!!isFavorite), [isFavorite]);
-
-  const handleFavCard = (e) => {
-  e.stopPropagation();
-  if (!user) {
-    toast?.("כדי לשמור במועדפים יש להתחבר");
-    return;}
-  onToggleFavorite?.(id);};
 
   if (!apartment) return null;
 
-  const {
-    id,
-    title,
-    description,
-    images: rawImages = [],
-    price,
-    rooms,
-  } = apartment;
+  const {id, title, description, images: rawImages = [], price, rooms,} = apartment;
+
+  const handleFavCard = (e) => {
+    e.stopPropagation();
+    if (!user) {
+      toast?.("כדי לשמור במועדפים יש להתחבר");
+      return;
+    }
+    onToggleFavorite?.(id);
+  };
 
   const images = Array.isArray(rawImages) ? rawImages.filter(Boolean) : [];
   const hasImages = images.length > 0;
@@ -55,14 +47,12 @@ export default function ApartmentCard({ apartment, isFavorite, onToggleFavorite 
       className="bg-white rounded-2xl shadow-soft overflow-hidden relative flex flex-col cursor-pointer transform transition-transform transition-shadow duration-300 hover:scale-105 hover:shadow-lg">
       
       {/* favorite button */}
-      <button
-        onClick={handleFavCard}
-        className="absolute top-4 left-4 z-10 text-red-500 text-2xl bg-white rounded-full p-2 shadow-sm hover:scale-110 transition"
-        aria-label={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-        title={isFavorite ? "הסר ממועדפים" : "הוסף למועדפים"}
-      >
-        {isFavorite ? <FaHeart /> : <FaRegHeart />}
-      </button>
+        <div className="absolute top-4 left-4 z-10">
+          <FavoriteButton
+            isFavorite={!!isFavorite}
+            onClick={handleFavCard}
+          />
+        </div>
 
       {/* delete button - for admin only (edit mode)*/}
       {isAdmin && editMode && (

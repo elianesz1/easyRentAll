@@ -23,7 +23,6 @@ export default function Login() {
         email.trim(),
         password
       );
-      console.log("התחברות הצליחה:", userCredential.user);
       navigate("/home");
     } catch (err) {
       console.log("Login error:", err.code);
